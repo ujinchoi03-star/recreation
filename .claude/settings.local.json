@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(export JAVA_HOME=\"/c/Users/ujinc/.jdks/corretto-17.0.17\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(./gradlew build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(ROOM_ID=\"AJS2\":*)",
+      "Bash(__NEW_LINE_aa9240595f081c98__ echo \"=== 2. 방 입장 테스트 ===\")",
+      "Bash(__NEW_LINE_aa9240595f081c98__ echo -e \"\\\\n\\\\n=== 3. 방 정보 조회 ===\")",
+      "Bash(__NEW_LINE_aa9240595f081c98__ echo -e \"\\\\n\\\\n=== 4. 퀴즈 카테고리 조회 ===\")",
+      "Bash(ROOM_ID=\"7BWW\":*)",
+      "Bash(__NEW_LINE_969b18f7cc885191__ echo \"=== 퀴즈 정답 처리 ===\")",
+      "Bash(__NEW_LINE_969b18f7cc885191__ echo -e \"\\\\n\\\\n=== 퀴즈 패스 ===\")",
+      "Bash(__NEW_LINE_969b18f7cc885191__ echo -e \"\\\\n\\\\n=== 리액션 전송 ===\")"
+    ]
+  }
+}

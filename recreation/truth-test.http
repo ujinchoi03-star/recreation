@@ -1,0 +1,199 @@
+### ============================================
+### 진실게임 테스트 시나리오
+### 순서대로 실행하세요
+### ============================================
+
+### 1. 방 생성
+POST http://localhost:8080/api/v1/rooms
+Content-Type: application/json
+
+### 2. 플레이어 입장 (3명)
+POST http://localhost:8080/api/v1/rooms/join
+Content-Type: application/json
+
+{
+  "roomId": "7FW3",
+  "nickname": "철수"
+}
+
+### 3. 플레이어 입장 2
+POST http://localhost:8080/api/v1/rooms/join
+Content-Type: application/json
+
+{
+  "roomId": "7FW3",
+  "nickname": "영희"
+}
+
+### 4. 플레이어 입장 3
+POST http://localhost:8080/api/v1/rooms/join
+Content-Type: application/json
+
+{
+  "roomId": "7FW3",
+  "nickname": "민수"
+}
+
+### ============================================
+### 진실게임 시작
+### ============================================
+
+### 5. 게임 초기화
+POST http://localhost:8080/api/v1/games/truth/init
+Content-Type: application/json
+
+{
+  "roomId": "7FW3"
+}
+
+### 6. 현재 상태 확인
+GET http://localhost:8080/api/v1/games/truth/state/7FW3
+
+### ============================================
+### Phase 1: 답변자 선택
+### ============================================
+
+### 7-A. 랜덤 답변자 선택
+POST http://localhost:8080/api/v1/games/truth/answerer/random
+Content-Type: application/json
+
+{
+  "roomId": "7FW3"
+}
+
+### 7-B. 수동 답변자 지목 (위 대신 이걸 사용 가능)
+POST http://localhost:8080/api/v1/games/truth/answerer/select
+Content-Type: application/json
+
+{
+  "roomId": "여기에_roomId",
+  "answererDeviceId": "답변자_deviceId"
+}
+
+### ============================================
+### Phase 2: 질문 제출 (답변자 제외)
+### ============================================
+
+### 8. 질문 제출 1
+POST http://localhost:8080/api/v1/games/truth/question/submit
+Content-Type: application/json
+
+{
+  "roomId": "7FW3",
+  "deviceId": "84505d6f-e78f-4d73-a084-acadcbf6507a",
+  "question": "첫사랑은 언제였어?"
+}
+
+### 9. 질문 제출 2
+POST http://localhost:8080/api/v1/games/truth/question/submit
+Content-Type: application/json
+
+{
+  "roomId": "7FW3",
+  "deviceId": "dcd43775-7d81-4fdb-a9c3-5a2a1b0f4db7",
+  "question": "가장 부끄러웠던 순간은?"
+}
+
+### 10. 제출된 질문 개수 확인
+GET http://localhost:8080/api/v1/games/truth/question/count/7FW3
+
+### 11. 질문 제출 완료 (다음 단계로)
+POST http://localhost:8080/api/v1/games/truth/question/finish
+Content-Type: application/json
+
+{
+  "roomId": "7FW3"
+}
+
+### ============================================
+### Phase 3: 질문 선택
+### ============================================
+
+### 12. 랜덤 질문 선택
+POST http://localhost:8080/api/v1/games/truth/question/select
+Content-Type: application/json
+
+{
+  "roomId": "7FW3"
+}
+
+### 13. 마음에 안 들면 리롤 (다시 12번 실행)
+POST http://localhost:8080/api/v1/games/truth/question/select
+Content-Type: application/json
+
+{
+  "roomId": "7FW3"
+}
+
+### 14. 질문 확정 (답변 단계로)
+POST http://localhost:8080/api/v1/games/truth/question/confirm
+Content-Type: application/json
+
+{
+  "roomId": "7FW3"
+}
+
+### ============================================
+### Phase 4: 답변 & 얼굴 트래킹
+### ============================================
+
+### 15. 얼굴 트래킹 데이터 전송 (프론트에서 주기적으로)
+### 실제로는 face-api.js / MediaPipe에서 분석한 데이터 전송
+POST http://localhost:8080/api/v1/games/truth/face-tracking
+Content-Type: application/json
+
+{
+  "roomId": "7FW3",
+  "deviceId": "답변자_deviceId",
+  "data": {
+    "eyeBlinkRate": 3.5,
+    "eyeMovement": 0.4,
+    "facialTremor": 0.2,
+    "nostrilMovement": 0.1,
+    "microExpression": "nervous"
+  }
+}
+
+### 16. 얼굴 트래킹 데이터 추가 전송
+POST http://localhost:8080/api/v1/games/truth/face-tracking
+Content-Type: application/json
+
+{
+  "roomId": "여기에_roomId",
+  "deviceId": "답변자_deviceId",
+  "data": {
+    "eyeBlinkRate": 5.0,
+    "eyeMovement": 0.6,
+    "facialTremor": 0.4,
+    "nostrilMovement": 0.3,
+    "microExpression": "anxious"
+  }
+}
+
+### 17. 답변 완료 → 결과 분석
+POST http://localhost:8080/api/v1/games/truth/finish-answering
+Content-Type: application/json
+
+{
+  "roomId": "여기에_roomId"
+}
+
+### ============================================
+### 다음 라운드 / 게임 종료
+### ============================================
+
+### 18. 다음 라운드 시작
+POST http://localhost:8080/api/v1/games/truth/next-round
+Content-Type: application/json
+
+{
+  "roomId": "여기에_roomId"
+}
+
+### 19. 게임 종료
+POST http://localhost:8080/api/v1/games/truth/end
+Content-Type: application/json
+
+{
+  "roomId": "여기에_roomId"
+}
