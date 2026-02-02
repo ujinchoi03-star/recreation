@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recreation Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: #1e293b;
+            padding: 0 40px;
+            height: 64px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .header h1 span {
+            color: #3b82f6;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+
+        .status-dot.connected {
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        /* Main Layout */
+        .main {
+            padding: 32px 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Stats Grid - 4 columns fixed */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #f1f5f9;
+            line-height: 1;
+        }
+
+        .stat-card .value.blue { color: #3b82f6; }
+        .stat-card .value.green { color: #22c55e; }
+        .stat-card .value.yellow { color: #eab308; }
+        .stat-card .value.purple { color: #a855f7; }
+
+        /* Section */
+        .section {
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .section-body {
+            padding: 24px;
+        }
+
+        /* Rooms Grid - 3 columns */
+        .rooms-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        /* Room Card */
+        .room-card {
+            background: #0f172a;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            overflow: hidden;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .room-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .room-card-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+        }
+
+        .room-id {
+            font-size: 24px;
+            font-weight: 700;
+            color: #3b82f6;
+            font-family: 'Monaco', 'Consolas', monospace;
+            letter-spacing: 2px;
+        }
+
+        .room-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .room-status.waiting {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        .room-status.playing {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+        }
+
+        .room-card-body {
+            padding: 20px;
+        }
+
+        .room-meta {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        .room-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .room-meta-item .icon {
+            font-size: 16px;
+        }
+
+        .room-game-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: #312e81;
+            color: #a5b4fc;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .room-game-badge.none {
+            background: #1e293b;
+            color: #64748b;
+        }
+
+        .room-phase {
+            font-size: 13px;
+            color: #fbbf24;
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            background: rgba(251, 191, 36, 0.1);
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .room-players {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 32px;
+        }
+
+        .player-tag {
+            padding: 4px 10px;
+            background: #334155;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #e2e8f0;
+        }
+
+        .player-tag.dead {
+            opacity: 0.4;
+            text-decoration: line-through;
+        }
+
+        .player-tag .team {
+            color: #60a5fa;
+            margin-left: 4px;
+        }
+
+        .room-card-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #334155;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+            flex: 1;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: #f87171;
+            border: 1px solid #7f1d1d;
+        }
+
+        .btn-danger:hover {
+            background: #7f1d1d;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 12px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #1e293b;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 700px;
+            max-height: calc(100vh - 80px);
+            overflow: hidden;
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-header h3 span {
+            color: #3b82f6;
+        }
+
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #334155;
+            border: none;
+            color: #94a3b8;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: #475569;
+            color: #f1f5f9;
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-section {
+            margin-bottom: 24px;
+        }
+
+        .modal-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-section h4 {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .json-viewer {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #67e8f9;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #334155;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #64748b;
+            grid-column: 1 / -1;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .rooms-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .rooms-grid {
+                grid-template-columns: 1fr;
+            }
+            .main {
+                padding: 24px 20px;
+            }
+            .header {
+                padding: 0 20px;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1><span>Recreation</span> Admin</h1>
+        <div class="connection-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="connectionText">Connecting...</span>
+            <span id="lastUpdate" style="margin-left: 12px; color: #475569;"></span>
+        </div>
+    </header>
+
+    <main class="main">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total Rooms</div>
+                <div class="value blue" id="totalRooms">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Playing</div>
+                <div class="value green" id="playingRooms">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Waiting</div>
+                <div class="value yellow" id="waitingRooms">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Total Players</div>
+                <div class="value purple" id="totalPlayers">-</div>
+            </div>
+        </div>
+
+        <!-- Rooms Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Active Rooms</h2>
+                <button class="btn btn-secondary btn-sm" onclick="refreshData()">Refresh</button>
+            </div>
+            <div class="section-body">
+                <div class="rooms-grid" id="roomsGrid">
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>Loading rooms...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Room <span id="modalRoomId"></span></h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h4>Room Info</h4>
+                    <div class="json-viewer" id="roomInfoJson"></div>
+                </div>
+                <div class="modal-section">
+                    <h4>Game State</h4>
+                    <div class="json-viewer" id="gameStateJson"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+
+        // SSE Connection
+        function connectSSE() {
+            if (eventSource) eventSource.close();
+
+            eventSource = new EventSource('/api/admin/sse');
+
+            eventSource.addEventListener('CONNECTED', () => {
+                document.getElementById('statusDot').classList.add('connected');
+                document.getElementById('connectionText').textContent = 'Connected';
+            });
+
+            eventSource.addEventListener('INIT_DATA', (e) => {
+                updateDashboard(JSON.parse(e.data));
+            });
+
+            eventSource.addEventListener('UPDATE', (e) => {
+                updateDashboard(JSON.parse(e.data));
+            });
+
+            eventSource.onerror = () => {
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('connectionText').textContent = 'Reconnecting...';
+                setTimeout(connectSSE, 3000);
+            };
+        }
+
+        // Update Dashboard
+        function updateDashboard(data) {
+            const { stats, rooms } = data;
+
+            document.getElementById('totalRooms').textContent = stats.totalRooms;
+            document.getElementById('playingRooms').textContent = stats.playingRooms;
+            document.getElementById('waitingRooms').textContent = stats.waitingRooms;
+            document.getElementById('totalPlayers').textContent = stats.totalPlayers;
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+
+            renderRooms(rooms);
+        }
+
+        // Render Rooms
+        function renderRooms(rooms) {
+            const grid = document.getElementById('roomsGrid');
+
+            if (!rooms || rooms.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <p>No active rooms</p>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = rooms.map(room => `
+                <div class="room-card">
+                    <div class="room-card-header">
+                        <span class="room-id">${room.roomId}</span>
+                        <span class="room-status ${room.status.toLowerCase()}">${room.status}</span>
+                    </div>
+                    <div class="room-card-body">
+                        <div class="room-meta">
+                            <div class="room-meta-item">
+                                <span class="icon">👥</span>
+                                <span>${room.playerCount} players</span>
+                            </div>
+                            <div class="room-meta-item">
+                                <span class="icon">⏱</span>
+                                <span>${formatTTL(room.createdAt)}</span>
+                            </div>
+                        </div>
+
+                        ${room.currentGame
+                            ? `<div class="room-game-badge">${getGameIcon(room.currentGame)} ${getGameName(room.currentGame)}</div>`
+                            : `<div class="room-game-badge none">No game selected</div>`
+                        }
+
+                        ${room.gamePhase
+                            ? `<div class="room-phase">Phase: ${room.gamePhase}</div>`
+                            : ''
+                        }
+
+                        <div class="room-players">
+                            ${room.players.map(p => `
+                                <span class="player-tag ${p.isAlive ? '' : 'dead'}">
+                                    ${p.nickname}${p.team ? `<span class="team">${p.team}</span>` : ''}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="room-card-footer">
+                        <button class="btn btn-secondary" onclick="viewDetail('${room.roomId}')">Detail</button>
+                        ${room.currentGame === 'MAFIA'
+                            ? `<button class="btn btn-primary" onclick="forceNextPhase('${room.roomId}')">Next Phase</button>`
+                            : ''
+                        }
+                        <button class="btn btn-danger" onclick="deleteRoom('${room.roomId}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Helpers
+        function formatTTL(seconds) {
+            if (seconds < 0) return 'No TTL';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            return `${h}h ${m}m`;
+        }
+
+        function getGameIcon(code) {
+            const icons = { MAFIA: '🎭', MARBLE: '🎲', SPEED_QUIZ: '⚡', TRUTH: '🔍' };
+            return icons[code] || '🎮';
+        }
+
+        function getGameName(code) {
+            const names = { MAFIA: 'Mafia', MARBLE: 'Marble', SPEED_QUIZ: 'Speed Quiz', TRUTH: 'Truth' };
+            return names[code] || code;
+        }
+
+        // Actions
+        async function viewDetail(roomId) {
+            try {
+                const res = await fetch(`/api/admin/rooms/${roomId}`);
+                const json = await res.json();
+                if (!json.success) return alert(json.error);
+
+                const d = json.data;
+                document.getElementById('modalRoomId').textContent = roomId;
+                document.getElementById('roomInfoJson').textContent = JSON.stringify(d.roomInfo, null, 2);
+
+                const state = d.mafiaState || d.marbleState || d.quizState || d.truthState;
+                document.getElementById('gameStateJson').textContent = state
+                    ? JSON.stringify(JSON.parse(state), null, 2)
+                    : 'No active game state';
+
+                document.getElementById('modalOverlay').classList.add('active');
+            } catch (e) {
+                alert('Failed to load detail');
+            }
+        }
+
+        async function forceNextPhase(roomId) {
+            if (!confirm(`Force next phase for ${roomId}?`)) return;
+            try {
+                const res = await fetch(`/api/admin/rooms/${roomId}/force-next-phase`, { method: 'POST' });
+                const json = await res.json();
+                alert(json.success ? 'Phase changed!' : json.error);
+            } catch (e) {
+                alert('Failed');
+            }
+        }
+
+        async function deleteRoom(roomId) {
+            if (!confirm(`Delete room ${roomId}?`)) return;
+            try {
+                const res = await fetch(`/api/admin/rooms/${roomId}`, { method: 'DELETE' });
+                const json = await res.json();
+                alert(json.success ? 'Deleted!' : json.error);
+                refreshData();
+            } catch (e) {
+                alert('Failed');
+            }
+        }
+
+        async function refreshData() {
+            try {
+                const [s, r] = await Promise.all([
+                    fetch('/api/admin/stats').then(r => r.json()),
+                    fetch('/api/admin/rooms').then(r => r.json())
+                ]);
+                if (s.success && r.success) updateDashboard({ stats: s.data, rooms: r.data });
+            } catch (e) {}
+        }
+
+        function closeModal(e) {
+            if (!e || e.target.id === 'modalOverlay') {
+                document.getElementById('modalOverlay').classList.remove('active');
+            }
+        }
+
+        // Init
+        connectSSE();
+    </script>
+</body>
+</html>

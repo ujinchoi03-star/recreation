@@ -1,0 +1,109 @@
+### ============================================
+### 팀 편성 테스트
+### 먼저 방을 만들고 플레이어를 입장시킨 후 테스트하세요
+### ============================================
+
+### 1. 방 생성
+POST http://localhost:8080/api/v1/rooms
+Content-Type: application/json
+
+### 2. 플레이어 입장 (4명)
+POST http://localhost:8080/api/v1/rooms/join
+Content-Type: application/json
+
+{
+  "roomId": "932L",
+  "nickname": "철수"
+}
+
+### 3. 플레이어 입장 2
+POST http://localhost:8080/api/v1/rooms/join
+Content-Type: application/json
+
+{
+  "roomId": "932L",
+  "nickname": "영희"
+}
+
+### 4. 플레이어 입장 3
+POST http://localhost:8080/api/v1/rooms/join
+Content-Type: application/json
+
+{
+  "roomId": "932L",
+  "nickname": "민수"
+}
+
+### 5. 플레이어 입장 4
+POST http://localhost:8080/api/v1/rooms/join
+Content-Type: application/json
+
+{
+  "roomId": "932L",
+  "nickname": "지영"
+}
+
+### ============================================
+### 팀 편성 API
+### ============================================
+
+### 6. 랜덤 팀 배정 (2팀)
+POST http://localhost:8080/api/v1/teams/random
+Content-Type: application/json
+
+{
+  "roomId": "932L",
+  "teamCount": 2
+}
+
+### 7. 팀 초기화
+POST http://localhost:8080/api/v1/teams/reset
+Content-Type: application/json
+
+{
+  "roomId": "932L"
+}
+
+### 8. 사다리타기 (2팀) - 애니메이션 데이터 포함
+POST http://localhost:8080/api/v1/teams/ladder
+Content-Type: application/json
+
+{
+  "roomId": "932L",
+  "teamCount": 2
+}
+
+### 9. 수동 팀 선택 (플레이어가 직접)
+POST http://localhost:8080/api/v1/teams/select
+Content-Type: application/json
+
+{
+  "roomId": "여기에_roomId",
+  "deviceId": "플레이어_deviceId",
+  "teamName": "A"
+}
+
+### 10. 현재 팀 상태 조회
+GET http://localhost:8080/api/v1/teams/status/여기에_roomId
+
+### ============================================
+### 3팀 이상 테스트
+### ============================================
+
+### 11. 랜덤 팀 배정 (3팀)
+POST http://localhost:8080/api/v1/teams/random
+Content-Type: application/json
+
+{
+  "roomId": "여기에_roomId",
+  "teamCount": 3
+}
+
+### 12. 사다리타기 (4팀)
+POST http://localhost:8080/api/v1/teams/ladder
+Content-Type: application/json
+
+{
+  "roomId": "여기에_roomId",
+  "teamCount": 4
+}

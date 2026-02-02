@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  # 1. MySQL (콘텐츠 저장용)
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    ports:
+      - "3306:3306"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # 2. Redis (실시간 상태 관리용)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"

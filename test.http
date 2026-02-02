@@ -1,0 +1,6 @@
+### 방 생성 요청 보내기
+POST http://localhost:8080/api/v1/rooms
+Content-Type: application/json
+### 2. SSE 연결 테스트 (위에서 나온 roomId를 1234 자리에 넣으세요)
+GET http://localhost:8080/api/v1/rooms/sse/connect/2753
+Accept: text/event-stream
