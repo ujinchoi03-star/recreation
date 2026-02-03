@@ -49,8 +49,17 @@ class DataInitializer(
             description = "웹캠으로 거짓말 탐지하는 진실게임"
         ))
 
+        val liar = gameRepository.save(Game(
+            code = GameCode.LIAR,
+            name = "라이어 게임",
+            description = "한 명의 라이어를 찾아내는 추리 게임"
+        ))
+
         // 2. 스피드퀴즈 제시어만 생성 (주루마블/진실게임은 참가자가 직접 제출)
         initializeSpeedQuizContent(speedQuiz)
+
+        // 3. 라이어 게임 제시어 생성
+        initializeLiarContent(liar)
     }
 
     private fun initializeSpeedQuizContent(game: Game) {
@@ -167,6 +176,112 @@ class DataInitializer(
                     textContent = word,
                     type = ContentType.KEYWORD,
                     difficulty = 3
+                ))
+            }
+    }
+
+    private fun initializeLiarContent(game: Game) {
+        // 1. 동물 카테고리 (20개)
+        val animals = categoryRepository.save(Category(game = game, name = "동물"))
+        listOf("사자", "호랑이", "코끼리", "기린", "원숭이", "펭귄", "캥거루", "악어", "하마", "고릴라",
+            "늑대", "여우", "토끼", "돌고래", "상어", "독수리", "공작새", "뱀", "거북이", "고래")
+            .forEach { word ->
+                gameContentRepository.save(GameContent(
+                    category = animals,
+                    textContent = word,
+                    type = ContentType.KEYWORD,
+                    difficulty = 1
+                ))
+            }
+
+        // 2. 음식 카테고리 (20개)
+        val food = categoryRepository.save(Category(game = game, name = "음식"))
+        listOf("피자", "햄버거", "치킨", "삼겹살", "김치찌개", "된장찌개", "짜장면", "짬뽕", "초밥", "라면",
+            "떡볶이", "순대", "김밥", "비빔밥", "불고기", "파스타", "스테이크", "샐러드", "타코", "카레")
+            .forEach { word ->
+                gameContentRepository.save(GameContent(
+                    category = food,
+                    textContent = word,
+                    type = ContentType.KEYWORD,
+                    difficulty = 1
+                ))
+            }
+
+        // 3. 직업 카테고리 (20개)
+        val jobs = categoryRepository.save(Category(game = game, name = "직업"))
+        listOf("의사", "소방관", "경찰관", "요리사", "선생님", "과학자", "우주비행사", "배우", "가수", "축구선수",
+            "농부", "어부", "마술사", "파일럿", "간호사", "변호사", "건축가", "수의사", "유튜버", "DJ")
+            .forEach { word ->
+                gameContentRepository.save(GameContent(
+                    category = jobs,
+                    textContent = word,
+                    type = ContentType.KEYWORD,
+                    difficulty = 1
+                ))
+            }
+
+        // 4. 장소 카테고리 (20개)
+        val places = categoryRepository.save(Category(game = game, name = "장소"))
+        listOf("학교", "병원", "공항", "도서관", "수영장", "놀이공원", "영화관", "미술관", "박물관", "경찰서",
+            "소방서", "은행", "마트", "백화점", "카페", "식당", "헬스장", "공원", "해변", "산")
+            .forEach { word ->
+                gameContentRepository.save(GameContent(
+                    category = places,
+                    textContent = word,
+                    type = ContentType.KEYWORD,
+                    difficulty = 1
+                ))
+            }
+
+        // 5. 스포츠 카테고리 (20개)
+        val sports = categoryRepository.save(Category(game = game, name = "스포츠"))
+        listOf("축구", "농구", "야구", "배구", "테니스", "탁구", "배드민턴", "골프", "수영", "스키",
+            "스케이트", "복싱", "태권도", "유도", "양궁", "펜싱", "역도", "체조", "마라톤", "사이클")
+            .forEach { word ->
+                gameContentRepository.save(GameContent(
+                    category = sports,
+                    textContent = word,
+                    type = ContentType.KEYWORD,
+                    difficulty = 1
+                ))
+            }
+
+        // 6. 영화/드라마 카테고리 (20개)
+        val entertainment = categoryRepository.save(Category(game = game, name = "영화/드라마"))
+        listOf("타이타닉", "아바타", "어벤져스", "겨울왕국", "기생충", "해리포터", "반지의제왕", "스타워즈", "인셉션", "매트릭스",
+            "라이온킹", "토이스토리", "쥬라기공원", "인터스텔라", "스파이더맨", "배트맨", "오징어게임", "더글로리", "사랑의불시착", "도깨비")
+            .forEach { word ->
+                gameContentRepository.save(GameContent(
+                    category = entertainment,
+                    textContent = word,
+                    type = ContentType.KEYWORD,
+                    difficulty = 2
+                ))
+            }
+
+        // 7. 물건 카테고리 (20개)
+        val items = categoryRepository.save(Category(game = game, name = "물건"))
+        listOf("가위", "연필", "지우개", "책", "핸드폰", "컴퓨터", "텔레비전", "냉장고", "에어컨", "세탁기",
+            "침대", "의자", "책상", "소파", "거울", "우산", "시계", "안경", "지갑", "열쇠")
+            .forEach { word ->
+                gameContentRepository.save(GameContent(
+                    category = items,
+                    textContent = word,
+                    type = ContentType.KEYWORD,
+                    difficulty = 1
+                ))
+            }
+
+        // 8. 캐릭터 카테고리 (20개)
+        val characters = categoryRepository.save(Category(game = game, name = "캐릭터"))
+        listOf("뽀로로", "짱구", "도라에몽", "피카츄", "스폰지밥", "미키마우스", "헬로키티", "라이언", "어피치", "춘식이",
+            "심슨", "톰과제리", "포켓몬", "원피스루피", "나루토", "짱아", "뚱이", "코난", "호빵맨", "세일러문")
+            .forEach { word ->
+                gameContentRepository.save(GameContent(
+                    category = characters,
+                    textContent = word,
+                    type = ContentType.KEYWORD,
+                    difficulty = 2
                 ))
             }
     }

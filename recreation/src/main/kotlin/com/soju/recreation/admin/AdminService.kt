@@ -155,6 +155,7 @@ class AdminService(
             com.soju.recreation.domain.game.GameCode.MARBLE -> "room:$roomId:marble:state"
             com.soju.recreation.domain.game.GameCode.SPEED_QUIZ -> "room:$roomId:quiz:state"
             com.soju.recreation.domain.game.GameCode.TRUTH -> "room:$roomId:truth:state"
+            com.soju.recreation.domain.game.GameCode.LIAR -> "room:$roomId:liar:state"
         }
 
         val json = redisTemplate.opsForValue().get(key) ?: return null

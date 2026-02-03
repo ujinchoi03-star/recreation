@@ -91,3 +91,41 @@ enum class MafiaWinner {
 // 진실게임 (Truth) 게임 상태
 // TruthService.kt에 정의됨 (더 상세한 버전)
 // ============================================
+
+// ============================================
+// 라이어 게임 (Liar) 게임 상태
+// ============================================
+data class LiarGameState(
+    var phase: LiarPhase = LiarPhase.ROLE_REVEAL,      // 현재 페이즈
+    var timerSec: Int = 30,                            // 남은 시간
+    var keyword: String = "",                          // 제시어
+    var categoryName: String = "",                     // 카테고리 이름
+    var liarDeviceId: String = "",                     // 라이어의 deviceId
+    val explanationOrder: MutableList<String> = mutableListOf(),  // 설명 순서 (deviceId 리스트)
+    var currentExplainerIndex: Int = 0,                // 현재 설명자 인덱스
+    var roundCount: Int = 1,                           // 현재 라운드 (1 또는 2)
+    val moreRoundVotes: MutableMap<String, Boolean> = mutableMapOf(),  // 한바퀴 더 투표 (deviceId -> true:한바퀴더/false:stop)
+    var hasSecondRound: Boolean = false,               // 두 번째 라운드 진행 여부
+    // 지목 관련
+    val pointingVotes: MutableMap<String, String> = mutableMapOf(),  // 지목 투표 (voterId -> targetDeviceId)
+    var pointedDeviceId: String? = null,               // 지목된 플레이어 deviceId
+    // 라이어 정답 맞추기
+    var liarGuess: String? = null,                     // 라이어의 정답 추측
+    var winner: LiarWinner? = null                     // 승자
+)
+
+enum class LiarPhase(val durationSeconds: Int) {
+    ROLE_REVEAL(30),           // 역할 확인 (30초)
+    EXPLANATION(20),           // 설명 시간 (각 20초)
+    VOTE_MORE_ROUND(15),       // 한바퀴 더? 투표 (15초)
+    POINTING(0),               // 토론 시간 (시간 제한 없음, 호스트가 투표 시작)
+    POINTING_VOTE(30),         // 지목 투표 (30초)
+    POINTING_RESULT(5),        // 지목 결과 발표 (5초)
+    LIAR_GUESS(30),            // 라이어 정답 맞추기 (30초)
+    GAME_END(0)                // 게임 종료
+}
+
+enum class LiarWinner {
+    LIAR,      // 라이어 승리 (지목 실패 또는 정답 맞춤)
+    CITIZEN    // 시민 승리 (라이어 지목 + 정답 틀림)
+}

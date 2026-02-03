@@ -28,5 +28,6 @@ enum class GameCode {
     MARBLE,      // 주루마블
     MAFIA,       // 마피아
     SPEED_QUIZ,  // 몸으로 말해요
-    TRUTH        // 진실게임
+    TRUTH,       // 진실게임
+    LIAR         // 라이어 게임
 }
