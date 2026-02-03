@@ -1,8 +1,13 @@
 package com.soju.recreation.domain.room
 
 import com.soju.recreation.domain.game.GameCode
+import jakarta.validation.Valid
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Size
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 
 @RestController
@@ -36,7 +41,7 @@ class RoomController(
      * POST /api/v1/rooms/join
      */
     @PostMapping("/rooms/join")
-    fun joinRoom(@RequestBody request: JoinRequest): ApiResponse<JoinResponse> {
+    fun joinRoom(@Valid @RequestBody request: JoinRequest): ApiResponse<JoinResponse> {
         val player = roomService.joinRoom(request.roomId, request.nickname)
         return ApiResponse.success(
             JoinResponse(
@@ -111,7 +116,7 @@ class RoomController(
      * POST /api/v1/games/start
      */
     @PostMapping("/games/start")
-    fun startGame(@RequestBody request: GameStartRequest): ApiResponse<Unit> {
+    fun startGame(@Valid @RequestBody request: GameStartRequest): ApiResponse<Unit> {
         roomService.startGame(request.roomId, request.gameCode)
         return ApiResponse.success(Unit)
     }
@@ -137,6 +142,12 @@ class RoomController(
     fun handleIllegalArgument(e: IllegalArgumentException): ResponseEntity<ApiResponse<Unit>> {
         return ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "잘못된 요청입니다"))
     }
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidationError(e: MethodArgumentNotValidException): ResponseEntity<ApiResponse<Unit>> {
+        val errors = e.bindingResult.fieldErrors.map { "${it.field}: ${it.defaultMessage}" }
+        return ResponseEntity.badRequest().body(ApiResponse.error(errors.joinToString(", ")))
+    }
 }
 
 // ============================================
@@ -160,7 +171,11 @@ data class RoomCreateResponse(
 )
 
 data class JoinRequest(
+    @field:NotBlank(message = "방 번호는 필수입니다")
     val roomId: String,
+
+    @field:NotBlank(message = "닉네임은 필수입니다")
+    @field:Size(min = 1, max = 8, message = "닉네임은 1~8자 사이여야 합니다")
     val nickname: String
 )
 
@@ -170,14 +185,23 @@ data class JoinResponse(
 )
 
 data class GameStartRequest(
+    @field:NotBlank(message = "방 번호는 필수입니다")
     val roomId: String,
+
+    @field:NotNull(message = "게임 코드는 필수입니다")
     val gameCode: GameCode,
+
     val categoryId: Long? = null
 )
 
 data class ReactionRequest(
+    @field:NotBlank(message = "방 번호는 필수입니다")
     val roomId: String,
+
+    @field:NotBlank(message = "기기 ID는 필수입니다")
     val deviceId: String,
+
+    @field:NotNull(message = "리액션 타입은 필수입니다")
     val type: ReactionType
 )
 

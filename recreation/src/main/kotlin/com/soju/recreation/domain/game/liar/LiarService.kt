@@ -268,9 +268,10 @@ class LiarService(
                 "message" to "한바퀴 더 진행합니다!"
             ))
 
-            // 약간의 딜레이 후 설명 시작
-            Thread.sleep(2000)
-            transitionToExplanation(roomId)
+            // 약간의 딜레이 후 설명 시작 (비동기)
+            timerService.scheduleDelayed(roomId, 2000) {
+                transitionToExplanation(roomId)
+            }
         } else {
             // STOP - 지목 시간으로
             sseService.broadcast(roomId, "LIAR_VOTE_RESULT", mapOf(
@@ -280,8 +281,9 @@ class LiarService(
                 "message" to "지목 시간으로 넘어갑니다!"
             ))
 
-            Thread.sleep(2000)
-            transitionToPointing(roomId)
+            timerService.scheduleDelayed(roomId, 2000) {
+                transitionToPointing(roomId)
+            }
         }
     }
 

@@ -73,4 +73,23 @@ class LiarTimerService {
         schedulers.remove(roomId)
         logger.info("Cleaned up timer resources for room $roomId")
     }
+
+    /**
+     * 지정된 시간 후에 작업을 실행 (Thread.sleep 대체용)
+     */
+    fun scheduleDelayed(roomId: String, delayMillis: Long, action: () -> Unit) {
+        val scheduler = schedulers.computeIfAbsent(roomId) {
+            Executors.newSingleThreadScheduledExecutor()
+        }
+
+        scheduler.schedule({
+            try {
+                action()
+            } catch (e: Exception) {
+                logger.error("Delayed action error for room $roomId: ${e.message}", e)
+            }
+        }, delayMillis, TimeUnit.MILLISECONDS)
+
+        logger.info("Scheduled delayed action for room $roomId in ${delayMillis}ms")
+    }
 }
