@@ -6,8 +6,11 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class SseService {
-    // 방 번호(Key) -> 연결 통로(Value) 저장소
+    // 방 번호(Key) -> 연결 통로(Value) 저장소 (Host용)
     private val emitters = ConcurrentHashMap<String, SseEmitter>()
+
+    // 플레이어용 emitter 저장소: roomId -> (deviceId -> emitter)
+    private val playerEmitters = ConcurrentHashMap<String, ConcurrentHashMap<String, SseEmitter>>()
 
     // 1. 메인 화면(Host)이 접속하면 연결 통로를 만든다
     fun connect(roomId: String): SseEmitter {
@@ -40,5 +43,40 @@ class SseService {
                 emitters.remove(roomId)
             }
         }
+    }
+
+    // 3. 플레이어가 접속하면 연결 통로를 만든다
+    fun connectPlayer(roomId: String, deviceId: String): SseEmitter {
+        val emitter = SseEmitter(60 * 60 * 1000L)
+
+        playerEmitters.computeIfAbsent(roomId) { ConcurrentHashMap() }[deviceId] = emitter
+
+        emitter.onCompletion { playerEmitters[roomId]?.remove(deviceId) }
+        emitter.onTimeout { playerEmitters[roomId]?.remove(deviceId) }
+
+        try {
+            emitter.send(SseEmitter.event().name("CONNECT").data("connected"))
+        } catch (e: Exception) {
+            playerEmitters[roomId]?.remove(deviceId)
+        }
+
+        return emitter
+    }
+
+    // 4. 방의 모든 플레이어에게 브로드캐스트
+    fun broadcastToPlayers(roomId: String, eventName: String, data: Any) {
+        playerEmitters[roomId]?.forEach { (deviceId, emitter) ->
+            try {
+                emitter.send(SseEmitter.event().name(eventName).data(data))
+            } catch (e: Exception) {
+                playerEmitters[roomId]?.remove(deviceId)
+            }
+        }
+    }
+
+    // 5. Host와 모든 플레이어에게 동시에 브로드캐스트
+    fun broadcastToAll(roomId: String, eventName: String, data: Any) {
+        broadcast(roomId, eventName, data)
+        broadcastToPlayers(roomId, eventName, data)
     }
 }

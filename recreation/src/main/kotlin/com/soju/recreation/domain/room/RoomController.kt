@@ -81,6 +81,27 @@ class RoomController(
         return sseService.connect(roomId)
     }
 
+    /**
+     * SSE 연결 (Player 화면)
+     * GET /api/v1/sse/player/connect?roomId={roomId}&deviceId={deviceId}
+     */
+    @GetMapping("/sse/player/connect")
+    fun connectPlayerSse(
+        @RequestParam roomId: String,
+        @RequestParam deviceId: String
+    ): SseEmitter {
+        val room = roomService.getRoomInfo(roomId)
+            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+
+        // 플레이어가 방에 있는지 확인
+        val playerExists = room.players.any { it.deviceId == deviceId }
+        if (!playerExists) {
+            throw IllegalArgumentException("방에 입장하지 않은 플레이어입니다")
+        }
+
+        return sseService.connectPlayer(roomId, deviceId)
+    }
+
     // ============================================
     // 게임 제어 API
     // ============================================
