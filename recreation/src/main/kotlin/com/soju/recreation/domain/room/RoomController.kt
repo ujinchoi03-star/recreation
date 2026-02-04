@@ -122,6 +122,21 @@ class RoomController(
     }
 
     /**
+     * 페이즈 변경 (Host → 전체 브로드캐스트)
+     * POST /api/v1/phase/change
+     */
+    @PostMapping("/phase/change")
+    fun changePhase(@RequestBody request: PhaseChangeRequest): ApiResponse<Unit> {
+        val room = roomService.getRoomInfo(request.roomId)
+            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: ${request.roomId}")
+
+        sseService.broadcastToAll(request.roomId, "MARBLE_PHASE_CHANGE", mapOf(
+            "phase" to request.phase
+        ))
+        return ApiResponse.success(Unit)
+    }
+
+    /**
      * 리액션 전송 (User → Host)
      * POST /api/v1/games/reaction
      */
@@ -192,6 +207,11 @@ data class GameStartRequest(
     val gameCode: GameCode,
 
     val categoryId: Long? = null
+)
+
+data class PhaseChangeRequest(
+    val roomId: String,
+    val phase: String
 )
 
 data class ReactionRequest(

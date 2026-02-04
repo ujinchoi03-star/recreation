@@ -61,6 +61,7 @@ class RoomService(
         // Host 화면에 알림
         sseService.broadcast(roomId, "PLAYER_JOINED", mapOf(
             "nickname" to newPlayer.nickname,
+            "deviceId" to newPlayer.deviceId,
             "total" to room.players.size
         ))
 
