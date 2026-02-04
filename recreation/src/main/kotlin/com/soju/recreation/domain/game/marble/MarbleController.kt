@@ -70,6 +70,16 @@ class MarbleController(
     }
 
     /**
+     * 플레이어 개인 투표 완료
+     * POST /api/v1/games/marble/vote/done
+     */
+    @PostMapping("/vote/done")
+    fun playerVoteDone(@RequestBody request: MarbleRollRequest): ApiResponse<Unit> {
+        marbleService.playerVoteDone(request.roomId, request.deviceId)
+        return ApiResponse.success(Unit)
+    }
+
+    /**
      * 투표 완료 - 상위 26개 선정
      * POST /api/v1/games/marble/vote/finish
      */

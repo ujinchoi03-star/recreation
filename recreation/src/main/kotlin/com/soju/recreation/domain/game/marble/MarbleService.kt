@@ -23,6 +23,7 @@ class MarbleService(
         private const val PENALTY_KEY = "room:%s:marble:penalties"      // 제출된 벌칙
         private const val VOTE_KEY = "room:%s:marble:votes"             // 투표 현황
         private const val SELECTED_KEY = "room:%s:marble:selected"      // 선정된 벌칙
+        private const val VOTE_DONE_KEY = "room:%s:marble:vote_done"    // 투표 완료한 플레이어
         private const val TTL_HOURS = 6L
         private const val BOARD_SIZE = 28                               // 정사각형 판 (26벌칙 + 2의리주)
         private const val MAX_PENALTIES_PER_PLAYER = 2                  // 인당 벌칙 제출 개수
@@ -196,6 +197,29 @@ class MarbleService(
             totalVotes = votes.size,
             penalties = penaltyVotes
         )
+    }
+
+    /**
+     * 플레이어 개인 투표 완료 신호
+     */
+    fun playerVoteDone(roomId: String, deviceId: String) {
+        val room = roomService.getRoomInfo(roomId)
+            ?: throw IllegalArgumentException("방을 찾을 수 없습니다")
+        val player = room.players.find { it.deviceId == deviceId }
+            ?: throw IllegalArgumentException("플레이어를 찾을 수 없습니다")
+
+        val key = VOTE_DONE_KEY.format(roomId)
+        redisTemplate.opsForSet().add(key, deviceId)
+        redisTemplate.expire(key, TTL_HOURS, TimeUnit.HOURS)
+
+        val doneCount = (redisTemplate.opsForSet().size(key) ?: 0).toInt()
+        val totalPlayers = room.players.size
+
+        sseService.broadcast(roomId, "MARBLE_PLAYER_VOTE_DONE", mapOf(
+            "nickname" to player.nickname,
+            "doneCount" to doneCount,
+            "totalPlayers" to totalPlayers
+        ))
     }
 
     /**
