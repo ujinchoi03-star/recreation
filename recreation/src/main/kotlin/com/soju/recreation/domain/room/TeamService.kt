@@ -1,7 +1,6 @@
 package com.soju.recreation.domain.room
 
 import org.springframework.stereotype.Service
-import kotlin.random.Random
 
 @Service
 class TeamService(
@@ -41,93 +40,10 @@ class TeamService(
             players = room.players.map { PlayerTeamInfo(it.nickname, it.deviceId, it.team!!) }
         )
 
-        // Host에게 결과 전송
-        sseService.broadcast(roomId, "TEAM_ASSIGNED", result)
+        // Host + 모든 플레이어에게 결과 전송
+        sseService.broadcastToAll(roomId, "TEAM_ASSIGNED", result)
 
         return result
-    }
-
-    /**
-     * 사다리타기 결과 생성
-     * 프론트에서 애니메이션 표시용 데이터 반환
-     */
-    fun generateLadderGame(roomId: String, teamCount: Int = 2): LadderGameResult {
-        val room = roomService.getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
-
-        if (room.players.isEmpty()) {
-            throw IllegalArgumentException("플레이어가 없습니다")
-        }
-
-        val playerCount = room.players.size
-        val teamNames = getTeamNames(teamCount)
-
-        // 사다리 가로선 생성 (랜덤)
-        val ladderHeight = 10  // 사다리 높이 (가로선이 들어갈 수 있는 위치 수)
-        val horizontalLines = mutableListOf<LadderLine>()
-
-        for (row in 0 until ladderHeight) {
-            for (col in 0 until playerCount - 1) {
-                // 50% 확률로 가로선 생성 (연속된 가로선 방지)
-                val prevHasLine = horizontalLines.any { it.row == row && it.col == col - 1 }
-                if (!prevHasLine && Random.nextBoolean()) {
-                    horizontalLines.add(LadderLine(row, col))
-                }
-            }
-        }
-
-        // 각 플레이어의 사다리 결과 계산
-        val results = room.players.mapIndexed { startIndex, player ->
-            var currentCol = startIndex
-
-            for (row in 0 until ladderHeight) {
-                // 오른쪽으로 가는 가로선 있는지
-                if (horizontalLines.any { it.row == row && it.col == currentCol }) {
-                    currentCol++
-                }
-                // 왼쪽으로 가는 가로선 있는지
-                else if (horizontalLines.any { it.row == row && it.col == currentCol - 1 }) {
-                    currentCol--
-                }
-            }
-
-            LadderPlayerResult(
-                nickname = player.nickname,
-                deviceId = player.deviceId,
-                startPosition = startIndex,
-                endPosition = currentCol
-            )
-        }
-
-        // 도착 위치에 따라 팀 배정
-        val sortedByEnd = results.sortedBy { it.endPosition }
-        val playersPerTeam = (playerCount + teamCount - 1) / teamCount
-
-        sortedByEnd.forEachIndexed { index, result ->
-            val teamIndex = index / playersPerTeam
-            val teamName = teamNames[teamIndex.coerceAtMost(teamCount - 1)]
-            val player = room.players.find { it.deviceId == result.deviceId }
-            player?.team = teamName
-        }
-
-        roomService.saveRoomInfo(room)
-
-        val teams = teamNames.associateWith { teamName ->
-            room.players.filter { it.team == teamName }.map { it.nickname }
-        }
-
-        val ladderResult = LadderGameResult(
-            playerCount = playerCount,
-            ladderHeight = ladderHeight,
-            horizontalLines = horizontalLines,
-            playerResults = results,
-            teams = teams
-        )
-
-        // Host에게 사다리 데이터 전송 (애니메이션용)
-        sseService.broadcast(roomId, "LADDER_GAME", ladderResult)
-
-        return ladderResult
     }
 
     /**
@@ -158,10 +74,11 @@ class TeamService(
             team = teamName
         )
 
-        // Host에게 팀 선택 알림
-        sseService.broadcast(roomId, "PLAYER_TEAM_SELECTED", mapOf(
+        // Host + 모든 플레이어에게 팀 선택 알림
+        sseService.broadcastToAll(roomId, "PLAYER_TEAM_SELECTED", mapOf(
             "nickname" to player.nickname,
             "team" to teamName,
+            "teamCount" to teamCount,
             "teams" to getTeamStatus(room)
         ))
 
@@ -169,17 +86,23 @@ class TeamService(
     }
 
     /**
-     * 팀 초기화 (팀 배정 취소)
+     * 팀 초기화 (수동 선택 모드 시작)
      */
-    fun resetTeams(roomId: String) {
+    fun resetTeams(roomId: String, teamCount: Int = 2) {
         val room = roomService.getRoomInfo(roomId)
             ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+
+        val totalPlayers = room.players.size
+        val maxPerTeam = Math.ceil(totalPlayers.toDouble() / teamCount).toInt()
 
         room.players.forEach { it.team = null }
         roomService.saveRoomInfo(room)
 
-        sseService.broadcast(roomId, "TEAMS_RESET", mapOf(
-            "message" to "팀이 초기화되었습니다"
+        // Host + 모든 플레이어에게 수동 선택 모드 시작 알림
+        sseService.broadcastToAll(roomId, "TEAM_MANUAL_START", mapOf(
+            "teamCount" to teamCount,
+            "maxPerTeam" to maxPerTeam,
+            "teamNames" to getTeamNames(teamCount)
         ))
     }
 
@@ -213,7 +136,7 @@ class TeamService(
 // ============================================
 
 data class TeamAssignmentResult(
-    val method: String,  // RANDOM, LADDER, MANUAL
+    val method: String,  // RANDOM, MANUAL
     val teams: Map<String, List<String>>,  // 팀명 -> 닉네임 목록
     val players: List<PlayerTeamInfo>
 )
@@ -224,22 +147,3 @@ data class PlayerTeamInfo(
     val team: String
 )
 
-data class LadderGameResult(
-    val playerCount: Int,
-    val ladderHeight: Int,
-    val horizontalLines: List<LadderLine>,  // 프론트 애니메이션용
-    val playerResults: List<LadderPlayerResult>,
-    val teams: Map<String, List<String>>
-)
-
-data class LadderLine(
-    val row: Int,  // 세로 위치 (0부터)
-    val col: Int   // 가로 위치 (col과 col+1 사이에 선)
-)
-
-data class LadderPlayerResult(
-    val nickname: String,
-    val deviceId: String,
-    val startPosition: Int,  // 시작 위치 (왼쪽부터 0)
-    val endPosition: Int     // 도착 위치
-)

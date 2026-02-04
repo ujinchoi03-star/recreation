@@ -19,16 +19,6 @@ class TeamController(
     }
 
     /**
-     * 사다리타기 (팀 배정 + 애니메이션 데이터)
-     * POST /api/v1/teams/ladder
-     */
-    @PostMapping("/ladder")
-    fun generateLadderGame(@RequestBody request: TeamAssignRequest): ApiResponse<LadderGameResult> {
-        val result = teamService.generateLadderGame(request.roomId, request.teamCount)
-        return ApiResponse.success(result)
-    }
-
-    /**
      * 수동 팀 선택 (플레이어가 직접)
      * POST /api/v1/teams/select
      */
@@ -43,8 +33,8 @@ class TeamController(
      * POST /api/v1/teams/reset
      */
     @PostMapping("/reset")
-    fun resetTeams(@RequestBody request: RoomIdRequest): ApiResponse<Unit> {
-        teamService.resetTeams(request.roomId)
+    fun resetTeams(@RequestBody request: TeamResetRequest): ApiResponse<Unit> {
+        teamService.resetTeams(request.roomId, request.teamCount)
         return ApiResponse.success(Unit)
     }
 
@@ -71,7 +61,13 @@ data class TeamAssignRequest(
 data class TeamSelectRequest(
     val roomId: String,
     val deviceId: String,
-    val teamName: String  // "A", "B", etc.
+    val teamName: String,
+    val teamCount: Int = 2
+)
+
+data class TeamResetRequest(
+    val roomId: String,
+    val teamCount: Int = 2
 )
 
 data class RoomIdRequest(
