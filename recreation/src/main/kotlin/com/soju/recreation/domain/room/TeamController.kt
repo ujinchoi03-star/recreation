@@ -34,7 +34,7 @@ class TeamController(
      */
     @PostMapping("/select")
     fun selectTeam(@RequestBody request: TeamSelectRequest): ApiResponse<PlayerTeamInfo> {
-        val result = teamService.selectTeam(request.roomId, request.deviceId, request.teamName)
+        val result = teamService.selectTeam(request.roomId, request.deviceId, request.teamName, request.teamCount)
         return ApiResponse.success(result)
     }
 

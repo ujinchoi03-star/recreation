@@ -134,12 +134,20 @@ class TeamService(
      * 수동 팀 선택
      * 플레이어가 직접 팀을 선택
      */
-    fun selectTeam(roomId: String, deviceId: String, teamName: String): PlayerTeamInfo {
+    fun selectTeam(roomId: String, deviceId: String, teamName: String, teamCount: Int): PlayerTeamInfo {
         val room = roomService.getRoomInfo(roomId)
             ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
 
         val player = room.players.find { it.deviceId == deviceId }
             ?: throw IllegalArgumentException("플레이어를 찾을 수 없습니다")
+
+        // 최대 인원 체크
+        val totalPlayers = room.players.size
+        val maxPerTeam = Math.ceil(totalPlayers.toDouble() / teamCount).toInt()
+        val currentMembers = room.players.count { it.team == teamName }
+        if (currentMembers >= maxPerTeam) {
+            throw IllegalArgumentException("${teamName}팀 인원이 가득 찼습니다 ($currentMembers/$maxPerTeam)")
+        }
 
         player.team = teamName
         roomService.saveRoomInfo(room)
@@ -196,12 +204,7 @@ class TeamService(
     }
 
     private fun getTeamNames(count: Int): List<String> {
-        return when (count) {
-            2 -> listOf("A", "B")
-            3 -> listOf("A", "B", "C")
-            4 -> listOf("A", "B", "C", "D")
-            else -> (1..count).map { "Team$it" }
-        }
+        return (1..count).map { it.toString() }
     }
 }
 

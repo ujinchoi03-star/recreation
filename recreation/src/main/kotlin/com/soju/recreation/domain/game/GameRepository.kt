@@ -12,6 +12,8 @@ interface GameRepository : JpaRepository<Game, Long> {
 @Repository
 interface CategoryRepository : JpaRepository<Category, Long> {
     fun findByGame(game: Game): List<Category>
+
+    @Query("SELECT c FROM Category c WHERE c.game.code = :gameCode")
     fun findByGameCode(gameCode: GameCode): List<Category>
 }
 
