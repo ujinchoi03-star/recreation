@@ -4,7 +4,7 @@
 ---
 
 ## Frontend Repository
-[https://github.com/kang022878/Daejeon_front](https://github.com/Osssai-52/Jjan-)
+[https://github.com/Osssai-52/Jjan-](https://github.com/Osssai-52/Jjan-)
 
 ---
 
