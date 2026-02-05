@@ -488,18 +488,16 @@ class TruthService(
         val tremorScore = (avgTremor * 300).toInt().coerceIn(0, 100)
         val nostrilScore = (avgNostril * 300).toInt().coerceIn(0, 100)
 
-        // 프론트 stressLevel과 백엔드 자체 계산을 합산 (더 높은 쪽 우선)
-        val backendScore = (
-            blinkScore * 0.3 +
-            eyeScore * 0.3 +
-            tremorScore * 0.2 +
-            nostrilScore * 0.2
+        // Apply weights to calculate overall score (higher weight to eye-related metrics)
+        // Increased sensitivity: higher base scoring
+        val overallScore = (
+            blinkScore * 0.4 +
+            eyeScore * 0.4 +
+            tremorScore * 0.1 +
+            nostrilScore * 0.1
         ).toInt().coerceIn(0, 100)
 
-        // 프론트 계산값과 백엔드 계산값 중 높은 것 사용 + 기본 긴장도 15점 추가
-        val overallScore = (maxOf(backendScore, avgFrontendStress.toInt()) + 15).coerceIn(0, 100)
-
-        // 임계값 20: 스트레스 17~25 구간에서 진실/거짓 자연스럽게 섞임
+        // Increased sensitivity: 20+ score triggers lie detection (was 55)
         val isLie = overallScore >= 20
 
         val comment = buildAnalysisComment(overallScore, blinkScore, eyeScore, tremorScore, nostrilScore)

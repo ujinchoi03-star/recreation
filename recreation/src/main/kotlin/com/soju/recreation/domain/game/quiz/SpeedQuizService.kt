@@ -213,6 +213,9 @@ class SpeedQuizService(
             wasSkipped = true
         )
 
+        // [DEBUG LOG] Pass button processing
+        println("[SpeedQuiz] Pass! Team: $currentTeam, Score: ${state.currentRoundScore}, NextWord: ${state.currentWord}, Remaining: ${state.remainingWords.size}")
+
         sseService.broadcastToAll(roomId, "QUIZ_PASS", result)
 
         return result
