@@ -26,16 +26,16 @@ class SpeedQuizService(
         private const val DEFAULT_ROUND_TIME = 60
     }
 
-    // ??대㉧ 愿由?
+    // Timer Management
     private val schedulers = ConcurrentHashMap<String, ScheduledFuture<*>>()
     private val executor = Executors.newScheduledThreadPool(4)
 
     // ============================================
-    // Phase 1: 寃뚯엫 ?ㅼ젙
+    // Phase 1: Game Setup
     // ============================================
 
     /**
-     * ?ъ슜 媛?ν븳 移댄뀒怨좊━ 紐⑸줉 議고쉶
+     * Get available categories
      */
     fun getCategories(): List<CategoryInfo> {
         return categoryRepository.findByGameCode(GameCode.SPEED_QUIZ).map {
@@ -48,16 +48,16 @@ class SpeedQuizService(
     }
 
     /**
-     * 寃뚯엫 珥덇린??(?? 誘몃━ TeamService濡?諛곗젙?섏뼱 ?덉뼱????
+     * Initialize game (teams must be assigned by TeamService first)
      */
     fun initializeGame(roomId: String, roundTimeSeconds: Int = DEFAULT_ROUND_TIME): SpeedQuizState {
         val room = roomService.getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("諛⑹쓣 李얠쓣 ???놁뒿?덈떎: $roomId")
+            ?: throw IllegalArgumentException("Room not found: $roomId")
 
-        // ? ?뺤씤
+        // Check teams
         val teams = room.players.mapNotNull { it.team }.distinct().sorted()
         if (teams.isEmpty()) {
-            throw IllegalArgumentException("???諛곗젙?섏? ?딆븯?듬땲?? 癒쇱? ????섎닠二쇱꽭??")
+            throw IllegalArgumentException("No teams assigned. Please divide teams first.")
         }
 
         val state = SpeedQuizState(
@@ -82,26 +82,26 @@ class SpeedQuizService(
     }
 
     // ============================================
-    // Phase 2: ?蹂??쇱슫???쒖옉
+    // Phase 2: Start Round
     // ============================================
 
     /**
-     * 移댄뀒怨좊━ ?좏깮 諛??쇱슫???쒖옉
+     * Select category and start round
      */
     fun startRound(roomId: String, categoryId: Long): RoundStartResult {
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("寃뚯엫??珥덇린?붾릺吏 ?딆븯?듬땲??)
+            ?: throw IllegalArgumentException("Game not initialized")
 
         if (state.phase == QuizPhase.PLAYING) {
-            throw IllegalArgumentException("?대? 寃뚯엫??吏꾪뻾 以묒엯?덈떎")
+            throw IllegalArgumentException("Game already in progress")
         }
 
         val currentTeam = state.teams[state.currentTeamIndex]
 
-        // 移댄뀒怨좊━?먯꽌 ?쒖떆??濡쒕뵫
+        // Load words from category
         val words = loadWordsFromCategory(categoryId)
         if (words.isEmpty()) {
-            throw IllegalArgumentException("?대떦 移댄뀒怨좊━???쒖떆?닿? ?놁뒿?덈떎")
+            throw IllegalArgumentException("No words found in this category")
         }
 
         state.currentWord = words.first()
@@ -134,22 +134,22 @@ class SpeedQuizService(
     }
 
     /**
-     * ?뺣떟 泥섎━ - ?먯닔 利앷? + ?ㅼ쓬 臾몄젣
+     * Correct answer - increase score + next word
      */
     fun correct(roomId: String): QuizResult {
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("寃뚯엫???쒖옉?섏? ?딆븯?듬땲??)
+            ?: throw IllegalArgumentException("Game not initialized")
 
         if (state.phase != QuizPhase.PLAYING) {
-            throw IllegalArgumentException("寃뚯엫??吏꾪뻾 以묒씠 ?꾨떃?덈떎")
+            throw IllegalArgumentException("Game is not in progress")
         }
 
         val currentTeam = state.teams[state.currentTeamIndex]
 
-        // ?먯닔 利앷?
+        // Increase score
         state.currentRoundScore++
 
-        // ?ㅼ쓬 臾몄젣濡?
+        // Next word
         val previousWord = state.currentWord
         state.currentWord = state.remainingWords.removeFirstOrNull()
 
@@ -166,12 +166,12 @@ class SpeedQuizService(
             team = currentTeam
         )
 
-        // [DEBUG LOG] ?뺣떟 泥섎━ 濡쒓렇
+        // [DEBUG LOG] Correct answer processing
         println("[SpeedQuiz] Correct! Team: $currentTeam, Score: ${state.currentRoundScore}, NextWord: ${state.currentWord}, Remaining: ${state.remainingWords.size}")
 
         sseService.broadcastToAll(roomId, "QUIZ_CORRECT", result)
 
-        // 臾몄젣媛 ???⑥뼱吏硫??쇱슫??醫낅즺
+        // End round if no more words
         if (isWordFinished) {
             endRound(roomId)
         }
@@ -180,25 +180,25 @@ class SpeedQuizService(
     }
 
     /**
-     * ?⑥뒪 - 臾몄젣 嫄대꼫?곌린 (?ㅻ줈 蹂대궡湲?
+     * Pass - skip word (send to back)
      */
     fun pass(roomId: String): QuizResult {
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("寃뚯엫???쒖옉?섏? ?딆븯?듬땲??)
+            ?: throw IllegalArgumentException("Game not initialized")
 
         if (state.phase != QuizPhase.PLAYING) {
-            throw IllegalArgumentException("寃뚯엫??吏꾪뻾 以묒씠 ?꾨떃?덈떎")
+            throw IllegalArgumentException("Game is not in progress")
         }
 
         val currentTeam = state.teams[state.currentTeamIndex]
 
-        // ?꾩옱 臾몄젣瑜??ㅻ줈 蹂대궡湲?
+        // Send current word to back
         val skippedWord = state.currentWord
         if (skippedWord != null && state.remainingWords.isNotEmpty()) {
             state.remainingWords.add(skippedWord)
         }
 
-        // ?ㅼ쓬 臾몄젣濡?
+        // Next word
         state.currentWord = state.remainingWords.removeFirstOrNull() ?: skippedWord
 
         saveState(roomId, state)
@@ -222,21 +222,21 @@ class SpeedQuizService(
     }
 
     // ============================================
-    // Phase 3: ?쇱슫??醫낅즺 諛??ㅼ쓬 ?
+    // Phase 3: End Round and Next Team
     // ============================================
 
     /**
-     * ?쇱슫??醫낅즺 (??대㉧ 醫낅즺 ?먮뒗 ?섎룞)
+     * End Round (Timer end or manual)
      */
     fun endRound(roomId: String): RoundEndResult {
-        val state = getState(roomId) ?: throw IllegalArgumentException("寃뚯엫???놁뒿?덈떎")
+        val state = getState(roomId) ?: throw IllegalArgumentException("Game not found")
 
-        // ??대㉧ 痍⑥냼
+        // Cancel timer
         cancelTimer(roomId)
 
         val currentTeam = state.teams[state.currentTeamIndex]
 
-        // ? ?먯닔 湲곕줉
+        // Record team score
         state.teamScores[currentTeam] = state.currentRoundScore
         state.completedTeams.add(currentTeam)
 
@@ -266,21 +266,21 @@ class SpeedQuizService(
     }
 
     /**
-     * ?ㅼ쓬 ??쇰줈 (移댄뀒怨좊━ ?좏깮 ?붾㈃?쇰줈)
+     * Next Team (To Category Selection Screen)
      */
     fun nextTeam(roomId: String): NextTeamResult {
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("寃뚯엫???놁뒿?덈떎")
+            ?: throw IllegalArgumentException("Game not found")
 
-        // 紐⑤뱺 ? ?꾨즺 泥댄겕
+        // Check completion of all teams
         if (state.completedTeams.size >= state.teams.size) {
-            throw IllegalArgumentException("紐⑤뱺 ????꾨즺?덉뒿?덈떎. ?쒖쐞瑜??뺤씤?섏꽭??")
+            throw IllegalArgumentException("All teams completed. Please check ranking.")
         }
 
-        // ?ㅼ쓬 ??쇰줈
+        // To next team
         state.currentTeamIndex = (state.currentTeamIndex + 1) % state.teams.size
 
-        // ?대? ?꾨즺????대㈃ ?ㅼ쓬 ? 李얘린
+        // Find next team if already completed
         while (state.teams[state.currentTeamIndex] in state.completedTeams) {
             state.currentTeamIndex = (state.currentTeamIndex + 1) % state.teams.size
         }
@@ -307,15 +307,15 @@ class SpeedQuizService(
     }
 
     // ============================================
-    // Phase 4: 理쒖쥌 ?쒖쐞
+    // Phase 4: Final Ranking
     // ============================================
 
     /**
-     * 理쒖쥌 ?쒖쐞 議고쉶
+     * Get Final Ranking
      */
     fun getFinalRanking(roomId: String): FinalRankingResult {
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("寃뚯엫???놁뒿?덈떎")
+            ?: throw IllegalArgumentException("Game not found")
 
         val ranking = state.teamScores.entries
             .sortedByDescending { it.value }
@@ -341,7 +341,7 @@ class SpeedQuizService(
     }
 
     /**
-     * 寃뚯엫 醫낅즺
+     * End Game
      */
     fun endGame(roomId: String) {
         cancelTimer(roomId)
@@ -350,27 +350,27 @@ class SpeedQuizService(
         redisTemplate.delete(key)
 
         sseService.broadcastToAll(roomId, "QUIZ_GAME_END", mapOf(
-            "message" to "?ㅽ뵾???댁쫰媛 醫낅즺?섏뿀?듬땲??"
+            "message" to "Speed quiz has ended!"
         ))
     }
 
     // ============================================
-    // 議고쉶 API
+    // Query API
     // ============================================
 
     /**
-     * ?꾩옱 寃뚯엫 ?곹깭 議고쉶
+     * Get Current Game State
      */
     fun getGameState(roomId: String): SpeedQuizState? {
         return getState(roomId)
     }
 
     /**
-     * ?꾩옱 ?쒖떆??議고쉶 (媛쒖씤 而⑦듃濡ㅻ윭??
+     * Get Current Word (For Individual Controller)
      */
     fun getCurrentWord(roomId: String): CurrentWordResult {
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("寃뚯엫???놁뒿?덈떎")
+            ?: throw IllegalArgumentException("Game not found")
 
         return CurrentWordResult(
             currentWord = state.currentWord,
@@ -402,7 +402,7 @@ class SpeedQuizService(
                 state.remainingTime = remaining
                 saveState(roomId, state)
 
-                // 留ㅼ큹 釉뚮줈?쒖틦?ㅽ듃
+                // Broadcast every second
                 sseService.broadcastToAll(roomId, "QUIZ_TIMER", mapOf(
                     "remaining" to remaining,
                     "currentWord" to state.currentWord,
@@ -414,7 +414,7 @@ class SpeedQuizService(
                     endRound(roomId)
                 }
             } catch (e: Exception) {
-                // ?먮윭 臾댁떆
+                // Ignore error
             }
         }, 1, 1, TimeUnit.SECONDS)
 
@@ -427,7 +427,7 @@ class SpeedQuizService(
     }
 
     // ============================================
-    // Redis 愿由?
+    // Redis Management
     // ============================================
 
     private fun loadWordsFromCategory(categoryId: Long): List<String> {
@@ -455,23 +455,23 @@ class SpeedQuizService(
 // ============================================
 
 data class SpeedQuizState(
-    val teams: MutableList<String>,                          // 李몄뿬 ? 紐⑸줉
-    var currentTeamIndex: Int = 0,                           // ?꾩옱 吏꾪뻾 以묒씤 ? ?몃뜳??
-    var roundTimeSeconds: Int = 60,                          // ?쇱슫???쒗븳 ?쒓컙
-    var remainingTime: Int = 0,                              // ?⑥? ?쒓컙
-    val teamScores: MutableMap<String, Int> = mutableMapOf(),// ?蹂?理쒖쥌 ?먯닔
-    val completedTeams: MutableList<String> = mutableListOf(),// ?꾨즺?????
-    var phase: QuizPhase = QuizPhase.WAITING,                // ?꾩옱 ?곹깭
-    var currentWord: String? = null,                         // ?꾩옱 ?쒖떆??
-    var remainingWords: MutableList<String> = mutableListOf(),// ?⑥? ?쒖떆??
-    var currentRoundScore: Int = 0                           // ?꾩옱 ?쇱슫???먯닔
+    val teams: MutableList<String>,                          // Participating teams
+    var currentTeamIndex: Int = 0,                           // Current team index
+    var roundTimeSeconds: Int = 60,                          // Round time limit
+    var remainingTime: Int = 0,                              // Remaining time
+    val teamScores: MutableMap<String, Int> = mutableMapOf(),// Team scores
+    val completedTeams: MutableList<String> = mutableListOf(),// Completed teams
+    var phase: QuizPhase = QuizPhase.WAITING,                // Current phase
+    var currentWord: String? = null,                         // Current word
+    var remainingWords: MutableList<String> = mutableListOf(),// Remaining words
+    var currentRoundScore: Int = 0                           // Current round score
 )
 
 enum class QuizPhase {
-    WAITING,    // 移댄뀒怨좊━ ?좏깮 ?湲?
-    PLAYING,    // 寃뚯엫 吏꾪뻾 以?
-    ROUND_END,  // ?쇱슫??醫낅즺
-    FINISHED    // 寃뚯엫 ?꾨즺
+    WAITING,    // Waiting for category selection
+    PLAYING,    // Game in progress
+    ROUND_END,  // Round ended
+    FINISHED    // Game finished
 }
 
 // ============================================
