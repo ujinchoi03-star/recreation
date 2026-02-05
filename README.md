@@ -3,20 +3,25 @@
 
 ---
 
-## 📝 서비스 개요
+## Frontend Repository
+[https://github.com/kang022878/Daejeon_front](https://github.com/Osssai-52/Jjan-)
 
-### 🎯 기획 배경
+---
+
+## 서비스 개요
+
+### 기획 배경
 - 오프라인 술자리에서 게임 준비, 사회자 역할, 대화 주제 고갈 등으로 흐름이 끊기는 문제를 해결하고
 - 별도의 준비물 없이 모바일 웹 하나로 레크레이션을 간편하게 진행하여 분위기를 자연스럽게 띄워주자!
 
-### 👥 타겟 사용자
+### 타겟 사용자
 - **몰입캠프 엠티**를 가는 사람들
 
 ---
 
 ## 🛠 기술 스택 (Tech Stack)
 
-### 💻 Frontend
+### Frontend
 | Category | Technology | Description |
 | :--- | :--- | :--- |
 | **Core Framework** | **Next.js (App Router)** | 호스트 및 플레이어 페이지 라우팅 및 전반적인 웹 구조 설계 |
@@ -28,7 +33,7 @@
 | **Data Fetching** | **Axios** | 백엔드 API 서버와의 비동기 HTTP 통신 및 에러 핸들링 |
 | **UI Components** | **shadcn/ui** | 재사용 가능한 고품질 UI 컴포넌트를 활용한 개발 효율성 증대 |
 
-### ⚙️ Backend
+### Backend
 | Category | Technology | Description |
 | :--- | :--- | :--- |
 | **Core Framework** | **Spring Boot** | 비즈니스 로직 처리 및 REST API 구축을 위한 핵심 프레임워크 |
@@ -42,5 +47,5 @@
 
 ---
 
-## 🏗 시스템 아키텍처 (System Architecture)
+## 시스템 아키텍처 (System Architecture)
 
