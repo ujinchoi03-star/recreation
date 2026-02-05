@@ -472,33 +472,35 @@ class TruthService(
             )
         }
 
-        // 평균 계산
+        // 프론트엔드에서 이미 Blendshape + Baseline + EMA로 정교하게 계산한 stressLevel 활용
+        val avgFrontendStress = trackingData.map { it.stressLevel }.average()
+
+        // 개별 지표도 3배 증폭하여 점수화 (초민감 모드)
         val avgBlinkRate = trackingData.map { it.eyeBlinkRate }.average()
         val avgEyeMovement = trackingData.map { it.eyeMovement }.average()
         val avgTremor = trackingData.map { it.facialTremor }.average()
         val avgNostril = trackingData.map { it.nostrilMovement }.average()
 
-        // 각 지표를 점수화 (0~100, 높을수록 긴장/스트레스)
-        // 눈 깜빡임: 정상 2~4회/초, 긴장 시 증가 (10회 이상이면 100점)
-        val blinkScore = ((avgBlinkRate - 2) / 8 * 100).toInt().coerceIn(0, 100)
-        // 눈동자 움직임: 0~1 값을 그대로 100점 만점으로
-        val eyeScore = (avgEyeMovement * 100).toInt().coerceIn(0, 100)
-        // 얼굴 떨림: 0~1 값을 그대로 100점 만점으로
-        val tremorScore = (avgTremor * 100).toInt().coerceIn(0, 100)
-        // 콧구멍 움직임: 0~1 값을 그대로 100점 만점으로
-        val nostrilScore = (avgNostril * 100).toInt().coerceIn(0, 100)
+        // 눈 깜빡임: 아무 깜빡임도 점수 부여 (기존: -2 보정 제거)
+        val blinkScore = (avgBlinkRate / 3 * 100).toInt().coerceIn(0, 100)
+        // 나머지: 3배 증폭 (0.1 → 30점)
+        val eyeScore = (avgEyeMovement * 300).toInt().coerceIn(0, 100)
+        val tremorScore = (avgTremor * 300).toInt().coerceIn(0, 100)
+        val nostrilScore = (avgNostril * 300).toInt().coerceIn(0, 100)
 
-        // 가중치 적용 종합 점수 (눈 관련 지표에 더 높은 가중치)
-        // 민감도 상향 조정: 기본 점수를 높게 책정
-        val overallScore = (
-            blinkScore * 0.4 +
-            eyeScore * 0.4 +
-            tremorScore * 0.1 +
-            nostrilScore * 0.1
+        // 프론트 stressLevel과 백엔드 자체 계산을 합산 (더 높은 쪽 우선)
+        val backendScore = (
+            blinkScore * 0.3 +
+            eyeScore * 0.3 +
+            tremorScore * 0.2 +
+            nostrilScore * 0.2
         ).toInt().coerceIn(0, 100)
 
-        // 민감도 상향: 20점 이상이면 거짓말(긴장) 판정 (기존 55점)
-        val isLie = overallScore >= 20
+        // 프론트 계산값과 백엔드 계산값 중 높은 것 사용 + 기본 긴장도 15점 추가
+        val overallScore = (maxOf(backendScore, avgFrontendStress.toInt()) + 15).coerceIn(0, 100)
+
+        // 임계값 10: 거의 모든 미세 변화에 거짓 판정
+        val isLie = overallScore >= 10
 
         val comment = buildAnalysisComment(overallScore, blinkScore, eyeScore, tremorScore, nostrilScore)
 
