@@ -1,5 +1,12 @@
-# Jjan!
-> **"술자리 인싸가 되는 가장 빠른 길"** > 오프라인 술자리의 흐름을 끊지 않고, 모바일 웹 하나로 즐기는 레크리에이션 플랫폼
+<h1 align="left">Jjan!</h1>
+
+<div align="center">
+  <img src="./assets/MainImage.png" alt="Jjan!" width="100%" />
+
+  <p>
+    <strong>오프라인 술자리의 흐름을 끊지 않고, 모바일 웹 하나로 즐기는 레크리에이션 플랫폼</strong>
+  </p>
+</div>
 
 ---
 
