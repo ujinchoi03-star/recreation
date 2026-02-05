@@ -42,7 +42,7 @@ class TruthService(
         saveState(roomId, state)
         clearQuestions(roomId)
 
-        sseService.broadcast(roomId, "TRUTH_INIT", mapOf(
+        sseService.broadcastToAll(roomId, "TRUTH_INIT", mapOf(
             "phase" to state.phase.name,
             "round" to state.round,
             "players" to room.players.map { mapOf("nickname" to it.nickname, "deviceId" to it.deviceId) }
@@ -80,7 +80,7 @@ class TruthService(
             nickname = randomPlayer.nickname
         )
 
-        sseService.broadcast(roomId, "TRUTH_ANSWERER_SELECTED", mapOf(
+        sseService.broadcastToAll(roomId, "TRUTH_ANSWERER_SELECTED", mapOf(
             "answerer" to result,
             "phase" to state.phase.name,
             "message" to "${randomPlayer.nickname}님이 답변자로 선정되었습니다!"
@@ -111,7 +111,7 @@ class TruthService(
             nickname = player.nickname
         )
 
-        sseService.broadcast(roomId, "TRUTH_ANSWERER_SELECTED", mapOf(
+        sseService.broadcastToAll(roomId, "TRUTH_ANSWERER_SELECTED", mapOf(
             "answerer" to result,
             "phase" to state.phase.name,
             "message" to "${player.nickname}님이 답변자로 지목되었습니다!"
@@ -272,7 +272,7 @@ class TruthService(
         val room = roomService.getRoomInfo(roomId)!!
         val answerer = room.players.find { it.deviceId == state.currentAnswerer }
 
-        sseService.broadcast(roomId, "TRUTH_START_ANSWERING", mapOf(
+        sseService.broadcastToAll(roomId, "TRUTH_START_ANSWERING", mapOf(
             "phase" to state.phase.name,
             "answerer" to answerer?.nickname,
             "answererDeviceId" to state.currentAnswerer,
@@ -441,7 +441,7 @@ class TruthService(
         val room = roomService.getRoomInfo(roomId)!!
         val answerer = room.players.find { it.deviceId == state.currentAnswerer }
 
-        sseService.broadcast(roomId, "TRUTH_RESULT", mapOf(
+        sseService.broadcastToAll(roomId, "TRUTH_RESULT", mapOf(
             "phase" to state.phase.name,
             "answerer" to answerer?.nickname,
             "question" to state.currentQuestion,
@@ -568,7 +568,7 @@ class TruthService(
 
         saveState(roomId, state)
 
-        sseService.broadcast(roomId, "TRUTH_NEXT_ROUND", mapOf(
+        sseService.broadcastToAll(roomId, "TRUTH_NEXT_ROUND", mapOf(
             "phase" to state.phase.name,
             "round" to state.round
         ))
@@ -583,7 +583,7 @@ class TruthService(
         clearQuestions(roomId)
         deleteState(roomId)
 
-        sseService.broadcast(roomId, "TRUTH_GAME_END", mapOf(
+        sseService.broadcastToAll(roomId, "TRUTH_GAME_END", mapOf(
             "message" to "진실게임이 종료되었습니다!"
         ))
     }
