@@ -15,18 +15,18 @@
 
 ---
 
-## 서비스 개요
+## Service Overview
 
-### 기획 배경
+### Background
 - 오프라인 술자리에서 게임 준비, 사회자 역할, 대화 주제 고갈 등으로 흐름이 끊기는 문제를 해결하고
 - 별도의 준비물 없이 모바일 웹 하나로 레크레이션을 간편하게 진행하여 분위기를 자연스럽게 띄워주자!
 
-### 타겟 사용자
+### Target User
 - **몰입캠프 엠티**를 가는 사람들
 
 ---
 
-## 🛠 기술 스택 (Tech Stack)
+## Tech Stack
 
 ### Frontend
 | Category | Technology | Description |
@@ -54,5 +54,73 @@
 
 ---
 
-## 시스템 아키텍처 (System Architecture)
+## System Architecture
 
+![System Architecture](./assets/Architecture.png)
+
+---
+
+## Key Features
+### 1. 주루마블
+### 2. 마피아게임
+### 3. 진실게임
+### 4. 몸으로 말해요/고요 속의 외침
+### 5. 라이어게임
+
+---
+
+## Developers
+
+| [@ujinchoi03-star](https://github.com/ujinchoi03-star) | **Backend Developer** |
+|:---:|:---:|
+| [@Osssai-52](https://github.com/Osssai-52) | **Frontend Developer** |
+
+---
+
+## Getting Started
+
+프로젝트를 로컬 환경에서 실행하기 위한 단계별 안내입니다.
+
+### Prerequisites
+- **Frontend**: Node.js (v18 이상 권장), npm 또는 yarn
+- **Backend**: Java 17 JDK, Gradle
+- **Database**: MySQL, Redis
+
+---
+
+### Frontend (Next.js)
+1. **의존성 설치**
+  ```bash
+  npm install
+  # 또는
+  yarn install
+  ```
+2. **환경 변수 설정 .env.local 파일을 생성하고 백엔드 API 주소를 설정합니다.**
+  ```bash
+  NEXT_PUBLIC_API_URL=/api/v1
+  ```
+3. **로컬 서버 실행**
+  ```bash
+  npm run dev
+  # 또는
+  yarn dev
+  브라우저에서 http://localhost:3000으로 접속 확인
+  ```
+### Backend (Spring Boot)
+1. **데이터베이스 설정 MySQL에 mt_game 데이터베이스를 생성합니다.**
+2. **환경 변수 설정 src/main/resources/application.yml 파일에서 DB와 Redis 접속 정보를 수정하거나 환경 변수를 주입합니다.**
+  ```bash
+  MYSQL_HOST=localhost
+  MYSQL_DATABASE=mt_game
+  MYSQL_ROOT_PASSWORD=your_password
+  REDIS_HOST=localhost
+  ```
+3. **애플리케이션 실행**
+  ```bash
+  ./gradlew bootRun
+  ```
+### Docker Compose (Optional)
+**만약 MySQL과 Redis를 직접 설치하기 번거롭다면, Docker를 이용해 한 번에 띄울 수 있습니다.**
+  ```bash
+  docker-compose up -d
+  ```
