@@ -699,6 +699,8 @@ data class FaceTrackingData(
     val eyeMovement: Double,       // 눈동자 움직임 (0~1, 불안정할수록 높음)
     val facialTremor: Double,      // 얼굴 떨림 (0~1)
     val nostrilMovement: Double,   // 콧구멍 움직임 (0~1)
+    val stressLevel: Int = 0,      // 프론트에서 계산한 종합 스트레스 (0~100)
+    val isLie: Boolean = false,    // 프론트에서 판정한 거짓말 여부
     val microExpression: String?,  // 미세표정 ("nervous", "confident", etc.)
     val timestamp: Long = System.currentTimeMillis()
 )
