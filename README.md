@@ -86,8 +86,6 @@
 - **Backend**: Java 17 JDK, Gradle
 - **Database**: MySQL, Redis
 
----
-
 ### Frontend (Next.js)
 1. **의존성 설치**
   ```bash
