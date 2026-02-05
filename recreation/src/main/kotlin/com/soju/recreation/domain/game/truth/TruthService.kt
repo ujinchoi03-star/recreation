@@ -499,8 +499,8 @@ class TruthService(
         // 프론트 계산값과 백엔드 계산값 중 높은 것 사용 + 기본 긴장도 15점 추가
         val overallScore = (maxOf(backendScore, avgFrontendStress.toInt()) + 15).coerceIn(0, 100)
 
-        // 임계값 10: 거의 모든 미세 변화에 거짓 판정
-        val isLie = overallScore >= 10
+        // 임계값 20: 스트레스 17~25 구간에서 진실/거짓 자연스럽게 섞임
+        val isLie = overallScore >= 20
 
         val comment = buildAnalysisComment(overallScore, blinkScore, eyeScore, tremorScore, nostrilScore)
 
