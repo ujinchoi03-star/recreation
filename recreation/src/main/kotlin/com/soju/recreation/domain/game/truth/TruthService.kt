@@ -489,15 +489,16 @@ class TruthService(
         val nostrilScore = (avgNostril * 100).toInt().coerceIn(0, 100)
 
         // 가중치 적용 종합 점수 (눈 관련 지표에 더 높은 가중치)
+        // 민감도 상향 조정: 기본 점수를 높게 책정
         val overallScore = (
-            blinkScore * 0.3 +
-            eyeScore * 0.35 +
-            tremorScore * 0.2 +
-            nostrilScore * 0.15
+            blinkScore * 0.4 +
+            eyeScore * 0.4 +
+            tremorScore * 0.1 +
+            nostrilScore * 0.1
         ).toInt().coerceIn(0, 100)
 
-        // 55점 이상이면 거짓말(긴장) 판정
-        val isLie = overallScore >= 55
+        // 민감도 상향: 20점 이상이면 거짓말(긴장) 판정 (기존 55점)
+        val isLie = overallScore >= 20
 
         val comment = buildAnalysisComment(overallScore, blinkScore, eyeScore, tremorScore, nostrilScore)
 

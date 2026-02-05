@@ -166,6 +166,9 @@ class SpeedQuizService(
             team = currentTeam
         )
 
+        // [DEBUG LOG] 정답 처리 로그
+        println("[SpeedQuiz] Correct! Team: $currentTeam, Score: ${state.currentRoundScore}, NextWord: ${state.currentWord}, Remaining: ${state.remainingWords.size}")
+
         sseService.broadcast(roomId, "QUIZ_CORRECT", result)
 
         // 문제가 다 떨어지면 라운드 종료
@@ -426,6 +429,7 @@ class SpeedQuizService(
 
     private fun loadWordsFromCategory(categoryId: Long): List<String> {
         val contents = gameContentRepository.findRandomByCategoryIdWithLimit(categoryId, DEFAULT_WORD_COUNT)
+        println("[SpeedQuiz] Loading words for category $categoryId. Found: ${contents.size} words.") // [DEBUG LOG]
         return contents.map { it.textContent }.shuffled()
     }
 
