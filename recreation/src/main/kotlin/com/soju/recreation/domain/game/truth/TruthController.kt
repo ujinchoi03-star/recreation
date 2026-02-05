@@ -113,7 +113,7 @@ class TruthController(
     }
 
     // ============================================
-    // Phase 3: 질문 선택
+    // Phase 3: 질문 선택 (투표)
     // ============================================
 
     /**
@@ -133,6 +133,46 @@ class TruthController(
     @PostMapping("/question/confirm")
     fun confirmQuestion(@RequestBody request: TruthRoomRequest): ApiResponse<TruthGameState> {
         val state = truthService.confirmQuestion(request.roomId)
+        return ApiResponse.success(state)
+    }
+
+    /**
+     * 익명 질문 목록 조회 (투표용)
+     * GET /api/v1/games/truth/question/list/{roomId}
+     */
+    @GetMapping("/question/list/{roomId}")
+    fun getQuestionList(@PathVariable roomId: String): ApiResponse<List<Map<String, Any>>> {
+        val list = truthService.getQuestionList(roomId)
+        return ApiResponse.success(list)
+    }
+
+    /**
+     * 질문 투표 토글
+     * POST /api/v1/games/truth/question/vote
+     */
+    @PostMapping("/question/vote")
+    fun voteQuestion(@RequestBody request: VoteQuestionRequest): ApiResponse<Unit> {
+        truthService.voteQuestion(request.roomId, request.deviceId, request.questionIndex)
+        return ApiResponse.success(Unit)
+    }
+
+    /**
+     * 플레이어 투표 완료
+     * POST /api/v1/games/truth/question/vote/done
+     */
+    @PostMapping("/question/vote/done")
+    fun playerVoteDone(@RequestBody request: VoteDoneRequest): ApiResponse<Unit> {
+        truthService.playerVoteDone(request.roomId, request.deviceId)
+        return ApiResponse.success(Unit)
+    }
+
+    /**
+     * 투표 마감 → 최다 득표 질문 선정 → ANSWERING 전환
+     * POST /api/v1/games/truth/question/vote/finish
+     */
+    @PostMapping("/question/vote/finish")
+    fun finishQuestionVote(@RequestBody request: TruthRoomRequest): ApiResponse<TruthGameState> {
+        val state = truthService.finishQuestionVote(request.roomId)
         return ApiResponse.success(state)
     }
 
@@ -199,4 +239,15 @@ data class FaceTrackingRequest(
     val roomId: String,
     val deviceId: String,
     val data: FaceTrackingData
+)
+
+data class VoteQuestionRequest(
+    val roomId: String,
+    val deviceId: String,
+    val questionIndex: Int
+)
+
+data class VoteDoneRequest(
+    val roomId: String,
+    val deviceId: String
 )

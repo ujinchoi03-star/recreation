@@ -190,11 +190,19 @@ class TruthService(
 
         state.phase = TruthPhase.SELECT_QUESTION
         state.submittedQuestions = questions.toMutableList()
+        state.questionVotes.clear()
+        state.voteDoneDevices.clear()
         saveState(roomId, state)
 
-        sseService.broadcast(roomId, "TRUTH_QUESTIONS_READY", mapOf(
+        // 익명 질문 목록 (index + question만)
+        val anonymousQuestions = questions.mapIndexed { index, q ->
+            mapOf("index" to index, "question" to q.question)
+        }
+
+        sseService.broadcastToAll(roomId, "TRUTH_QUESTIONS_READY", mapOf(
             "phase" to state.phase.name,
-            "questionCount" to questions.size
+            "questionCount" to questions.size,
+            "questions" to anonymousQuestions
         ))
 
         return questions
@@ -270,6 +278,114 @@ class TruthService(
             "answererDeviceId" to state.currentAnswerer,
             "question" to state.currentQuestion,
             "message" to "${answerer?.nickname}님, 카메라를 켜고 질문에 답해주세요!"
+        ))
+
+        return state
+    }
+
+    // ============================================
+    // Phase 3.5: 질문 투표
+    // ============================================
+
+    /**
+     * 익명 질문 목록 조회 (투표용)
+     */
+    fun getQuestionList(roomId: String): List<Map<String, Any>> {
+        val state = getState(roomId)
+            ?: throw IllegalArgumentException("게임이 시작되지 않았습니다")
+
+        return state.submittedQuestions.mapIndexed { index, q ->
+            mapOf("index" to index, "question" to q.question)
+        }
+    }
+
+    /**
+     * 질문 투표 토글
+     */
+    fun voteQuestion(roomId: String, deviceId: String, questionIndex: Int) {
+        val state = getState(roomId)
+            ?: throw IllegalArgumentException("게임이 시작되지 않았습니다")
+
+        if (state.phase != TruthPhase.SELECT_QUESTION) {
+            throw IllegalArgumentException("투표 시간이 아닙니다")
+        }
+
+        if (questionIndex < 0 || questionIndex >= state.submittedQuestions.size) {
+            throw IllegalArgumentException("잘못된 질문 번호입니다")
+        }
+
+        // 이미 해당 질문에 투표했으면 취소, 아니면 추가 (토글)
+        val existing = state.questionVotes.find { it.deviceId == deviceId && it.questionIndex == questionIndex }
+        if (existing != null) {
+            state.questionVotes.remove(existing)
+        } else {
+            state.questionVotes.add(QuestionVote(deviceId = deviceId, questionIndex = questionIndex))
+        }
+
+        saveState(roomId, state)
+    }
+
+    /**
+     * 플레이어 투표 완료
+     */
+    fun playerVoteDone(roomId: String, deviceId: String) {
+        val state = getState(roomId)
+            ?: throw IllegalArgumentException("게임이 시작되지 않았습니다")
+
+        state.voteDoneDevices.add(deviceId)
+        saveState(roomId, state)
+
+        val room = roomService.getRoomInfo(roomId)!!
+        val totalVoters = room.players.size - 1 // 답변자 제외
+
+        sseService.broadcast(roomId, "TRUTH_QUESTION_VOTE_DONE", mapOf(
+            "doneCount" to state.voteDoneDevices.size,
+            "totalPlayers" to totalVoters
+        ))
+    }
+
+    /**
+     * 투표 마감 → 최다 득표 질문 선정 → ANSWERING 전환
+     */
+    fun finishQuestionVote(roomId: String): TruthGameState {
+        val state = getState(roomId)
+            ?: throw IllegalArgumentException("게임이 시작되지 않았습니다")
+
+        if (state.submittedQuestions.isEmpty()) {
+            throw IllegalArgumentException("제출된 질문이 없습니다")
+        }
+
+        // 질문별 투표 수 집계
+        val voteCounts = state.questionVotes.groupBy { it.questionIndex }
+            .mapValues { it.value.size }
+
+        // 최다 득표 질문 선택 (동점이면 랜덤)
+        val maxVotes = voteCounts.values.maxOrNull() ?: 0
+        val topQuestionIndex = if (maxVotes > 0) {
+            voteCounts.filter { it.value == maxVotes }.keys.random()
+        } else {
+            // 아무도 투표하지 않으면 랜덤 선택
+            state.submittedQuestions.indices.random()
+        }
+
+        val selectedQuestion = state.submittedQuestions[topQuestionIndex]
+        selectedQuestion.isUsed = true
+
+        state.currentQuestion = selectedQuestion.question
+        state.currentQuestionFrom = selectedQuestion.nickname
+        state.phase = TruthPhase.ANSWERING
+        state.faceTrackingData.clear()
+        saveState(roomId, state)
+
+        val room = roomService.getRoomInfo(roomId)!!
+        val answerer = room.players.find { it.deviceId == state.currentAnswerer }
+
+        sseService.broadcastToAll(roomId, "TRUTH_START_ANSWERING", mapOf(
+            "phase" to state.phase.name,
+            "answerer" to answerer?.nickname,
+            "answererDeviceId" to state.currentAnswerer,
+            "question" to state.currentQuestion,
+            "message" to "${answerer?.nickname}님, 카메라를 보고 질문에 답해주세요!"
         ))
 
         return state
@@ -443,6 +559,8 @@ class TruthService(
         state.currentQuestion = null
         state.currentQuestionFrom = null
         state.faceTrackingData.clear()
+        state.questionVotes.clear()
+        state.voteDoneDevices.clear()
 
         // 질문 목록 초기화
         clearQuestions(roomId)
@@ -536,7 +654,9 @@ data class TruthGameState(
     var currentQuestion: String? = null,          // 현재 질문
     var currentQuestionFrom: String? = null,      // 질문 제출자 닉네임
     var submittedQuestions: MutableList<SubmittedQuestion> = mutableListOf(),
-    var faceTrackingData: MutableList<FaceTrackingData> = mutableListOf()
+    var faceTrackingData: MutableList<FaceTrackingData> = mutableListOf(),
+    var questionVotes: MutableList<QuestionVote> = mutableListOf(),
+    var voteDoneDevices: MutableSet<String> = mutableSetOf()
 )
 
 enum class TruthPhase {
@@ -564,6 +684,11 @@ data class SelectedQuestion(
     val question: String,
     val from: String,
     val remainingCount: Int
+)
+
+data class QuestionVote(
+    val deviceId: String,
+    val questionIndex: Int
 )
 
 data class FaceTrackingData(
