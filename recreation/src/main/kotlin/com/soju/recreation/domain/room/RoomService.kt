@@ -20,11 +20,11 @@ class RoomService(
     }
 
     // ============================================
-    // 방 관리
+    // Room Management
     // ============================================
 
     /**
-     * 방 생성 (Host 전용)
+     * Create Room (Host only)
      */
     fun createRoom(): RoomInfo {
         val roomId = generateRoomId()
@@ -39,15 +39,15 @@ class RoomService(
     }
 
     /**
-     * 유저 입장 (QR 스캔 후)
+     * Join Room (QR Scan)
      */
     fun joinRoom(roomId: String, nickname: String): Player {
         val room = getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+            ?: throw IllegalArgumentException("Room not found: $roomId")
 
-        // 중복 닉네임 체크
+        // Check duplicate nickname
         if (room.players.any { it.nickname == nickname }) {
-            throw IllegalArgumentException("이미 사용 중인 닉네임입니다: $nickname")
+            throw IllegalArgumentException("Nickname already taken: $nickname")
         }
 
         val newPlayer = Player(
@@ -58,7 +58,7 @@ class RoomService(
         room.players.add(newPlayer)
         saveRoomInfo(room)
 
-        // Host 화면에 알림
+        // Broadcast to Host Screen
         sseService.broadcast(roomId, "PLAYER_JOINED", mapOf(
             "nickname" to newPlayer.nickname,
             "deviceId" to newPlayer.deviceId,
@@ -69,7 +69,7 @@ class RoomService(
     }
 
     /**
-     * 방 정보 조회
+     * Get Room Info
      */
     fun getRoomInfo(roomId: String): RoomInfo? {
         val key = ROOM_INFO_KEY.format(roomId)
@@ -78,7 +78,7 @@ class RoomService(
     }
 
     /**
-     * 방 정보 저장
+     * Save Room Info
      */
     fun saveRoomInfo(room: RoomInfo) {
         val key = ROOM_INFO_KEY.format(room.roomId)
@@ -88,26 +88,26 @@ class RoomService(
     }
 
     // ============================================
-    // 게임 상태 관리
+    // Game State Management
     // ============================================
 
     /**
-     * 게임 시작
+     * Start Game
      */
     fun startGame(roomId: String, gameCode: GameCode) {
         val room = getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+            ?: throw IllegalArgumentException("Room not found: $roomId")
 
         room.status = RoomStatus.PLAYING
         room.currentGame = gameCode
         saveRoomInfo(room)
 
-        // Host 화면에 게임 시작 알림
+        // Broadcast Game Start to Host
         sseService.broadcast(roomId, "GAME_STARTED", mapOf("game" to gameCode.name))
     }
 
     /**
-     * 게임 상태 삭제
+     * Delete Game State
      */
     fun deleteGameState(roomId: String) {
         val key = ROOM_STATE_KEY.format(roomId)
@@ -115,12 +115,12 @@ class RoomService(
     }
 
     // ============================================
-    // 유틸리티
+    // Utility
     // ============================================
 
     private fun generateRoomId(): String {
-        // 4자리 영숫자 코드 생성 (충돌 시 재생성)
-        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // 혼동되는 문자 제외 (0,O,1,I)
+        // Generate 4-char alphanumeric code
+        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Exclude confusing chars (0,O,1,I)
         var roomId: String
         do {
             roomId = (1..4).map { chars.random() }.joinToString("")

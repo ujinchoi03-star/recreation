@@ -10,12 +10,22 @@ package com.soju.recreation.domain.room
 // 주루마블 (Marble) 게임 상태
 // ============================================
 data class MarbleGameState(
-    var turnTeam: String = "A",                        // 현재 턴인 팀
-    var lastDiceValue: Int? = null,                    // 마지막 주사위 값
-    val teams: MutableList<String> = mutableListOf("A", "B"),  // 참여 팀 목록 (턴 순서)
-    val positions: MutableMap<String, Int> = mutableMapOf(),   // 팀별 말 위치
-    val board: MutableList<BoardCell> = mutableListOf()        // 게임판 (벌칙 칸들)
+    var mode: GameMode = GameMode.TEAM,               // 게임 모드 (팀전 / 개인전)
+    var turnTeam: String = "A",                       // [팀전] 현재 턴인 팀
+    var lastDiceValue: Int? = null,                   // 마지막 주사위 값
+    val teams: MutableList<String> = mutableListOf("A", "B"),  // [팀전] 참여 팀 목록
+    val positions: MutableMap<String, Int> = mutableMapOf(),   // [팀전] 팀별 말 위치
+    val board: MutableList<BoardCell> = mutableListOf(),       // 게임판 (벌칙 칸들)
+    // 개인전용 필드
+    val turnOrder: MutableList<String> = mutableListOf(),      // [개인전] 플레이어 턴 순서 (deviceId)
+    var currentTurnIndex: Int = 0,                             // [개인전] 현재 턴 인덱스
+    val playerPositions: MutableMap<String, Int> = mutableMapOf()  // [개인전] 플레이어별 위치
 )
+
+enum class GameMode {
+    TEAM,  // 팀전
+    SOLO   // 개인전
+}
 
 data class BoardCell(
     val index: Int,           // 칸 번호 (0부터 시작)

@@ -6,24 +6,24 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class SseService {
-    // 방 번호(Key) -> 연결 통로(Value) 저장소 (Host용)
+    // Room ID(Key) -> Emitter(Value) (For Host)
     private val emitters = ConcurrentHashMap<String, SseEmitter>()
 
-    // 플레이어용 emitter 저장소: roomId -> (deviceId -> emitter)
+    // Player Emitters: roomId -> (deviceId -> emitter)
     private val playerEmitters = ConcurrentHashMap<String, ConcurrentHashMap<String, SseEmitter>>()
 
-    // 1. 메인 화면(Host)이 접속하면 연결 통로를 만든다
+    // 1. Host Connects
     fun connect(roomId: String): SseEmitter {
-        // 연결 유지 시간: 1시간 (3600초 * 1000ms) - 술자리 길어지니까 넉넉하게
+        // Timeout: 1 hour
         val emitter = SseEmitter(60 * 60 * 1000L)
 
         emitters[roomId] = emitter
 
-        // 연결이 끊기거나 타임아웃 되면 리스트에서 삭제
+        // Remove on completion/timeout
         emitter.onCompletion { emitters.remove(roomId) }
         emitter.onTimeout { emitters.remove(roomId) }
 
-        // "연결 성공!" 이라는 첫 번째 이벤트를 보냄 (더미 데이터)
+        // Send "connected" event
         try {
             emitter.send(SseEmitter.event().name("CONNECT").data("connected"))
         } catch (e: Exception) {
@@ -33,7 +33,7 @@ class SseService {
         return emitter
     }
 
-    // 2. 특정 방에 이벤트를 쏘는 기능 (나중에 주사위 굴릴 때 씀)
+    // 2. Broadcast to specific room (Host)
     fun broadcast(roomId: String, eventName: String, data: Any) {
         val emitter = emitters[roomId]
         if (emitter != null) {
@@ -45,7 +45,7 @@ class SseService {
         }
     }
 
-    // 3. 플레이어가 접속하면 연결 통로를 만든다
+    // 3. Player Connects
     fun connectPlayer(roomId: String, deviceId: String): SseEmitter {
         val emitter = SseEmitter(60 * 60 * 1000L)
 
@@ -63,7 +63,7 @@ class SseService {
         return emitter
     }
 
-    // 4. 방의 모든 플레이어에게 브로드캐스트
+    // 4. Broadcast to all players in room
     fun broadcastToPlayers(roomId: String, eventName: String, data: Any) {
         playerEmitters[roomId]?.forEach { (deviceId, emitter) ->
             try {
@@ -74,7 +74,7 @@ class SseService {
         }
     }
 
-    // 5. Host와 모든 플레이어에게 동시에 브로드캐스트
+    // 5. Broadcast to Host AND All Players
     fun broadcastToAll(roomId: String, eventName: String, data: Any) {
         broadcast(roomId, eventName, data)
         broadcastToPlayers(roomId, eventName, data)

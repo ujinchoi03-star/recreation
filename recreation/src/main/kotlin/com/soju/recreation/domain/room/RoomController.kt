@@ -18,11 +18,11 @@ class RoomController(
 ) {
 
     // ============================================
-    // 방 관리 API
+    // Room Management API
     // ============================================
 
     /**
-     * 방 생성 (Host 전용)
+     * Create Room (Host only)
      * POST /api/v1/rooms
      */
     @PostMapping("/rooms")
@@ -37,7 +37,7 @@ class RoomController(
     }
 
     /**
-     * 방 입장 (User - QR 스캔)
+     * Join Room (User - QR Scan)
      * POST /api/v1/rooms/join
      */
     @PostMapping("/rooms/join")
@@ -52,22 +52,22 @@ class RoomController(
     }
 
     /**
-     * 방 정보 조회
+     * Get Room Info
      * GET /api/v1/rooms/{roomId}
      */
     @GetMapping("/rooms/{roomId}")
     fun getRoomInfo(@PathVariable roomId: String): ApiResponse<RoomInfo> {
         val room = roomService.getRoomInfo(roomId)
-            ?: return ApiResponse.error("방을 찾을 수 없습니다: $roomId")
+            ?: return ApiResponse.error("Room not found: $roomId")
         return ApiResponse.success(room)
     }
 
     // ============================================
-    // SSE 연결
+    // SSE Connection
     // ============================================
 
     /**
-     * SSE 연결 (Host 화면)
+     * SSE Connect (Host Screen)
      * GET /api/v1/sse/connect?roomId={roomId}&sessionId={hostSessionId}
      */
     @GetMapping("/sse/connect")
@@ -75,19 +75,19 @@ class RoomController(
         @RequestParam roomId: String,
         @RequestParam sessionId: String
     ): SseEmitter {
-        // Host 세션 검증
+        // Validate Host Session
         val room = roomService.getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+            ?: throw IllegalArgumentException("Room not found: $roomId")
 
         if (room.hostSessionId != sessionId) {
-            throw IllegalArgumentException("유효하지 않은 Host 세션입니다")
+            throw IllegalArgumentException("Invalid Host Session")
         }
 
         return sseService.connect(roomId)
     }
 
     /**
-     * SSE 연결 (Player 화면)
+     * SSE Connect (Player Screen)
      * GET /api/v1/sse/player/connect?roomId={roomId}&deviceId={deviceId}
      */
     @GetMapping("/sse/player/connect")
@@ -96,23 +96,23 @@ class RoomController(
         @RequestParam deviceId: String
     ): SseEmitter {
         val room = roomService.getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+            ?: throw IllegalArgumentException("Room not found: $roomId")
 
-        // 플레이어가 방에 있는지 확인
+        // Check if player exists in room
         val playerExists = room.players.any { it.deviceId == deviceId }
         if (!playerExists) {
-            throw IllegalArgumentException("방에 입장하지 않은 플레이어입니다")
+            throw IllegalArgumentException("Player not found in this room")
         }
 
         return sseService.connectPlayer(roomId, deviceId)
     }
 
     // ============================================
-    // 게임 제어 API
+    // Game Control API
     // ============================================
 
     /**
-     * 게임 시작/변경 (Host가 제어)
+     * Start/Change Game (Host)
      * POST /api/v1/games/start
      */
     @PostMapping("/games/start")
@@ -122,13 +122,13 @@ class RoomController(
     }
 
     /**
-     * 페이즈 변경 (Host → 전체 브로드캐스트)
+     * Change Phase (Host -> Broadcast)
      * POST /api/v1/phase/change
      */
     @PostMapping("/phase/change")
     fun changePhase(@RequestBody request: PhaseChangeRequest): ApiResponse<Unit> {
         val room = roomService.getRoomInfo(request.roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: ${request.roomId}")
+            ?: throw IllegalArgumentException("Room not found: ${request.roomId}")
 
         sseService.broadcastToAll(request.roomId, "MARBLE_PHASE_CHANGE", mapOf(
             "phase" to request.phase
@@ -137,7 +137,7 @@ class RoomController(
     }
 
     /**
-     * 리액션 전송 (User → Host)
+     * Send Reaction (User -> Host)
      * POST /api/v1/games/reaction
      */
     @PostMapping("/games/reaction")
@@ -150,12 +150,12 @@ class RoomController(
     }
 
     // ============================================
-    // 예외 처리
+    // Exception Handling
     // ============================================
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgument(e: IllegalArgumentException): ResponseEntity<ApiResponse<Unit>> {
-        return ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "잘못된 요청입니다"))
+        return ResponseEntity.badRequest().body(ApiResponse.error(e.message ?: "Invalid Request"))
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
@@ -186,11 +186,11 @@ data class RoomCreateResponse(
 )
 
 data class JoinRequest(
-    @field:NotBlank(message = "방 번호는 필수입니다")
+    @field:NotBlank(message = "Room ID is required")
     val roomId: String,
 
-    @field:NotBlank(message = "닉네임은 필수입니다")
-    @field:Size(min = 1, max = 8, message = "닉네임은 1~8자 사이여야 합니다")
+    @field:NotBlank(message = "Nickname is required")
+    @field:Size(min = 1, max = 8, message = "Nickname must be 1-8 chars")
     val nickname: String
 )
 
@@ -200,10 +200,10 @@ data class JoinResponse(
 )
 
 data class GameStartRequest(
-    @field:NotBlank(message = "방 번호는 필수입니다")
+    @field:NotBlank(message = "Room ID is required")
     val roomId: String,
 
-    @field:NotNull(message = "게임 코드는 필수입니다")
+    @field:NotNull(message = "Game Code is required")
     val gameCode: GameCode,
 
     val categoryId: Long? = null
@@ -215,19 +215,19 @@ data class PhaseChangeRequest(
 )
 
 data class ReactionRequest(
-    @field:NotBlank(message = "방 번호는 필수입니다")
+    @field:NotBlank(message = "Room ID is required")
     val roomId: String,
 
-    @field:NotBlank(message = "기기 ID는 필수입니다")
+    @field:NotBlank(message = "Device ID is required")
     val deviceId: String,
 
-    @field:NotNull(message = "리액션 타입은 필수입니다")
+    @field:NotNull(message = "Reaction type is required")
     val type: ReactionType
 )
 
 enum class ReactionType {
-    FIREWORK,  // 폭죽
-    BOO,       // 야유
-    LAUGH,     // 웃음
-    ANGRY      // 화남
+    FIREWORK,
+    BOO,
+    LAUGH,
+    ANGRY
 }

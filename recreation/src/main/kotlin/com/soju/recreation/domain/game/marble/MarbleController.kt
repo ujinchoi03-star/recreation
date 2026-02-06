@@ -90,12 +90,27 @@ class MarbleController(
     }
 
     // ============================================
+    // Phase 2.5: 모드 선택 (팀전 / 개인전)
+    // ============================================
+
+    /**
+     * 게임 모드 선택 (팀전 / 개인전)
+     * POST /api/v1/games/marble/mode/select
+     */
+    @PostMapping("/mode/select")
+    fun selectGameMode(@RequestBody request: GameModeSelectRequest): ApiResponse<ModeSelectResult> {
+        val result = marbleService.selectGameMode(request.roomId, request.mode)
+        return ApiResponse.success(result)
+    }
+
+    // ============================================
     // Phase 3: 게임 시작
     // ============================================
 
     /**
      * 주루마블 게임 초기화
-     * 팀은 미리 /api/v1/teams 로 배정되어 있어야 함
+     * 팀전: 팀은 미리 /api/v1/teams 로 배정되어 있어야 함
+     * 개인전: selectGameMode에서 자동으로 순서 정해짐
      * POST /api/v1/games/marble/init
      */
     @PostMapping("/init")
@@ -163,4 +178,9 @@ data class VoteRequest(
     val roomId: String,
     val deviceId: String,
     val penaltyId: String
+)
+
+data class GameModeSelectRequest(
+    val roomId: String,
+    val mode: String  // "TEAM" 또는 "SOLO"
 )

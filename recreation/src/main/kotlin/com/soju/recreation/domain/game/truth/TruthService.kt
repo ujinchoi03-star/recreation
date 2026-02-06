@@ -20,18 +20,18 @@ class TruthService(
     }
 
     // ============================================
-    // 게임 초기화
+    // Game Initialization
     // ============================================
 
     /**
-     * 진실게임 시작
+     * Initialize Truth Game
      */
     fun initializeGame(roomId: String): TruthGameState {
         val room = roomService.getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+            ?: throw IllegalArgumentException("Room not found: $roomId")
 
         if (room.players.size < 2) {
-            throw IllegalArgumentException("진실게임은 최소 2명이 필요합니다")
+            throw IllegalArgumentException("Truth Game requires at least 2 players")
         }
 
         val state = TruthGameState(
@@ -52,21 +52,21 @@ class TruthService(
     }
 
     // ============================================
-    // Phase 1: 답변자 선택
+    // Phase 1: Select Answerer
     // ============================================
 
     /**
-     * 랜덤으로 답변자 선택
+     * Select Random Answerer
      */
     fun selectRandomAnswerer(roomId: String): AnswererInfo {
         val room = roomService.getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+            ?: throw IllegalArgumentException("Room not found: $roomId")
 
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("게임이 시작되지 않았습니다. 먼저 /init을 호출하세요")
+            ?: throw IllegalArgumentException("Game not initialized. Call /init first")
 
         if (room.players.isEmpty()) {
-            throw IllegalArgumentException("방에 플레이어가 없습니다")
+            throw IllegalArgumentException("No players in room")
         }
 
         val randomPlayer = room.players.random()
@@ -83,21 +83,21 @@ class TruthService(
         sseService.broadcastToAll(roomId, "TRUTH_ANSWERER_SELECTED", mapOf(
             "answerer" to result,
             "phase" to state.phase.name,
-            "message" to "${randomPlayer.nickname}님이 답변자로 선정되었습니다!"
+            "message" to "${randomPlayer.nickname} selected as answerer!"
         ))
 
         return result
     }
 
     /**
-     * 수동으로 답변자 지목
+     * Manual Answerer Selection
      */
     fun selectAnswerer(roomId: String, answererDeviceId: String): AnswererInfo {
         val room = roomService.getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다")
+            ?: throw IllegalArgumentException("Room not found")
 
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("게임이 시작되지 않았습니다")
+            ?: throw IllegalArgumentException("Game not initialized")
 
         val player = room.players.find { it.deviceId == answererDeviceId }
             ?: throw IllegalArgumentException("플레이어를 찾을 수 없습니다")
@@ -397,18 +397,18 @@ class TruthService(
 
     /**
      * 얼굴 트래킹 데이터 수신 (프론트에서 주기적으로 전송)
-     * 프론트에서 face-api.js나 MediaPipe로 분석 후 전송
+     * Submit Face Tracking Data (From frontend)
      */
     fun submitFaceTrackingData(roomId: String, deviceId: String, data: FaceTrackingData) {
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("게임이 시작되지 않았습니다")
+            ?: throw IllegalArgumentException("Game not initialized")
 
         if (state.phase != TruthPhase.ANSWERING) {
-            throw IllegalArgumentException("답변 시간이 아닙니다")
+            throw IllegalArgumentException("Not answering phase")
         }
 
         if (deviceId != state.currentAnswerer) {
-            throw IllegalArgumentException("답변자만 데이터를 전송할 수 있습니다")
+            throw IllegalArgumentException("Only answerer can submit data")
         }
 
         state.faceTrackingData.add(data)
@@ -426,16 +426,16 @@ class TruthService(
     }
 
     /**
-     * 답변 완료 → 결과 분석
+     * Finish Answering -> Analyze Result
      */
     fun finishAnswering(roomId: String): LieDetectionResult {
         val state = getState(roomId)
-            ?: throw IllegalArgumentException("게임이 시작되지 않았습니다")
+            ?: throw IllegalArgumentException("Game not initialized")
 
         state.phase = TruthPhase.RESULT
         saveState(roomId, state)
 
-        // 거짓말 판정 분석
+        // Analyze Lie Detection
         val result = analyzeLieDetection(state.faceTrackingData)
 
         val room = roomService.getRoomInfo(roomId)!!
@@ -446,15 +446,15 @@ class TruthService(
             "answerer" to answerer?.nickname,
             "question" to state.currentQuestion,
             "result" to result,
-            "message" to if (result.isLie) "거짓말 탐지! 🚨" else "진실로 판정! ✅"
+            "message" to if (result.isLie) "Lie Detected! \uD83D\uDEA8" else "It's True! \u2705"
         ))
 
         return result
     }
 
     /**
-     * 거짓말(긴장도) 판정 분석 로직
-     * 순수 수치 기반 판정 (랜덤성 없음)
+     * Lie Detection Logic
+     * Pure numeric calculation (No randomness)
      */
     private fun analyzeLieDetection(trackingData: List<FaceTrackingData>): LieDetectionResult {
         if (trackingData.isEmpty()) {
@@ -468,7 +468,7 @@ class TruthService(
                     nostrilScore = 0,
                     overallStressLevel = 0
                 ),
-                analysisComment = "분석 데이터가 없습니다. 카메라가 제대로 작동했는지 확인해주세요."
+                analysisComment = "No tracking data received. Check camera."
             )
         }
 
