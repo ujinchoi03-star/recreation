@@ -468,39 +468,114 @@ class TruthService(
                     nostrilScore = 0,
                     overallStressLevel = 0
                 ),
-                analysisComment = "No tracking data received. Check camera."
+                analysisComment = "카메라 데이터를 받지 못했습니다."
             )
         }
 
-        // 프론트엔드에서 이미 Blendshape + Baseline + EMA로 정교하게 계산한 stressLevel 활용
-        val avgFrontendStress = trackingData.map { it.stressLevel }.average()
+        // 데이터가 너무 적으면 판단 보류
+        if (trackingData.size < 5) {
+            return LieDetectionResult(
+                isLie = false,
+                confidence = 0,
+                details = LieDetectionDetails(
+                    eyeBlinkScore = 0,
+                    eyeMovementScore = 0,
+                    facialTremorScore = 0,
+                    nostrilScore = 0,
+                    overallStressLevel = 0
+                ),
+                analysisComment = "데이터가 부족합니다. 조금 더 답변해주세요."
+            )
+        }
 
-        // 개별 지표도 3배 증폭하여 점수화 (초민감 모드)
-        val avgBlinkRate = trackingData.map { it.eyeBlinkRate }.average()
-        val avgEyeMovement = trackingData.map { it.eyeMovement }.average()
-        val avgTremor = trackingData.map { it.facialTremor }.average()
-        val avgNostril = trackingData.map { it.nostrilMovement }.average()
+        // ===== 1. 기본 통계 계산 (평균 + 표준편차 + 중앙값) =====
+        val blinkRates = trackingData.map { it.eyeBlinkRate }
+        val eyeMovements = trackingData.map { it.eyeMovement }
+        val tremors = trackingData.map { it.facialTremor }
+        val nostrils = trackingData.map { it.nostrilMovement }
+        val stressLevels = trackingData.map { it.stressLevel }
 
-        // 눈 깜빡임: 아무 깜빡임도 점수 부여 (기존: -2 보정 제거)
-        val blinkScore = (avgBlinkRate / 3 * 100).toInt().coerceIn(0, 100)
-        // 나머지: 3배 증폭 (0.1 → 30점)
-        val eyeScore = (avgEyeMovement * 300).toInt().coerceIn(0, 100)
-        val tremorScore = (avgTremor * 300).toInt().coerceIn(0, 100)
-        val nostrilScore = (avgNostril * 300).toInt().coerceIn(0, 100)
+        // 중앙값 사용 (이상치에 강함)
+        val medianBlinkRate = blinkRates.sorted()[blinkRates.size / 2]
+        val medianEyeMovement = eyeMovements.sorted()[eyeMovements.size / 2]
+        val medianTremor = tremors.sorted()[tremors.size / 2]
+        val medianNostril = nostrils.sorted()[nostrils.size / 2]
 
-        // Apply weights to calculate overall score (higher weight to eye-related metrics)
-        // Increased sensitivity: higher base scoring
-        val overallScore = (
-            blinkScore * 0.4 +
-            eyeScore * 0.4 +
-            tremorScore * 0.1 +
-            nostrilScore * 0.1
+        // 표준편차 계산 (변동성 측정)
+        fun calcStdDev(values: List<Double>): Double {
+            val avg = values.average()
+            val variance = values.map { (it - avg) * (it - avg) }.average()
+            return kotlin.math.sqrt(variance)
+        }
+
+        val blinkStdDev = calcStdDev(blinkRates)
+        val eyeStdDev = calcStdDev(eyeMovements)
+        val tremorStdDev = calcStdDev(tremors)
+        val nostrilStdDev = calcStdDev(nostrils)
+
+        // ===== 2. 트렌드 분석 (시간에 따른 증가 패턴) =====
+        // 후반부가 전반부보다 높으면 긴장이 증가한 것
+        val halfPoint = trackingData.size / 2
+        val firstHalf = trackingData.subList(0, halfPoint)
+        val secondHalf = trackingData.subList(halfPoint, trackingData.size)
+
+        val firstHalfAvg = firstHalf.map { it.stressLevel }.average()
+        val secondHalfAvg = secondHalf.map { it.stressLevel }.average()
+        val trendIncrease = (secondHalfAvg - firstHalfAvg).coerceAtLeast(0.0)
+
+        // ===== 3. 미세표정 분석 =====
+        val nervousCount = trackingData.count { it.microExpression == "nervous" }
+        val nervousRatio = nervousCount.toDouble() / trackingData.size
+
+        // ===== 4. 점수 계산 (중앙값 + 변동성 고려) =====
+        // 중앙값 기반 점수 (더 안정적)
+        val blinkScore = (medianBlinkRate / 3 * 100).toInt().coerceIn(0, 100)
+        val eyeScore = (medianEyeMovement * 300).toInt().coerceIn(0, 100)
+        val tremorScore = (medianTremor * 300).toInt().coerceIn(0, 100)
+        val nostrilScore = (medianNostril * 300).toInt().coerceIn(0, 100)
+
+        // 변동성 점수 (표준편차가 크면 불안정)
+        val volatilityScore = (
+            (blinkStdDev * 100).coerceIn(0.0, 30.0) +
+            (eyeStdDev * 100).coerceIn(0.0, 30.0) +
+            (tremorStdDev * 50).coerceIn(0.0, 20.0) +
+            (nostrilStdDev * 50).coerceIn(0.0, 20.0)
+        ).toInt()
+
+        // 트렌드 점수 (증가 패턴)
+        val trendScore = (trendIncrease * 0.5).toInt().coerceIn(0, 20)
+
+        // 미세표정 점수
+        val microExprScore = (nervousRatio * 30).toInt()
+
+        // ===== 5. 종합 점수 계산 =====
+        val baseScore = (
+            blinkScore * 0.25 +
+            eyeScore * 0.25 +
+            tremorScore * 0.15 +
+            nostrilScore * 0.15 +
+            volatilityScore * 0.2 +
+            trendScore * 0.1 +
+            microExprScore * 0.1
         ).toInt().coerceIn(0, 100)
 
-        // Increased sensitivity: 20+ score triggers lie detection (was 55)
-        val isLie = overallScore >= 20
+        // ===== 6. 복합 지표 분석 (여러 지표가 동시에 높을 때 가중치 추가) =====
+        val highScoreCount = listOf(blinkScore, eyeScore, tremorScore, nostrilScore).count { it >= 50 }
+        val multiFactorBonus = when {
+            highScoreCount >= 3 -> 15  // 3개 이상 높으면 +15
+            highScoreCount >= 2 -> 10  // 2개 이상 높으면 +10
+            else -> 0
+        }
 
-        val comment = buildAnalysisComment(overallScore, blinkScore, eyeScore, tremorScore, nostrilScore)
+        val overallScore = (baseScore + multiFactorBonus).coerceIn(0, 100)
+
+        // ===== 7. 거짓말 판정 (현실적인 임계값: 55) =====
+        val isLie = overallScore >= 55
+
+        val comment = buildAnalysisComment(
+            overallScore, blinkScore, eyeScore, tremorScore, nostrilScore,
+            volatilityScore, trendScore, nervousRatio
+        )
 
         return LieDetectionResult(
             isLie = isLie,
@@ -517,29 +592,58 @@ class TruthService(
     }
 
     /**
-     * 분석 결과에 따른 코멘트 생성
+     * 분석 결과에 따른 코멘트 생성 (개선된 버전)
      */
     private fun buildAnalysisComment(
         overall: Int,
         blink: Int,
         eye: Int,
         tremor: Int,
-        nostril: Int
+        nostril: Int,
+        volatility: Int,
+        trend: Int,
+        nervousRatio: Double
     ): String {
-        val highestFactor = listOf(
+        val factors = listOf(
             "눈 깜빡임" to blink,
             "시선 불안정" to eye,
             "얼굴 떨림" to tremor,
             "콧구멍 움직임" to nostril
-        ).maxByOrNull { it.second }!!
+        ).sortedByDescending { it.second }
+
+        val highestFactor = factors.first()
+        val secondFactor = factors.getOrNull(1)
+
+        // 주요 특징 설명
+        val characteristics = mutableListOf<String>()
+        if (volatility > 30) characteristics.add("불안정한 움직임")
+        if (trend > 10) characteristics.add("점점 긴장이 증가")
+        if (nervousRatio > 0.3) characteristics.add("긴장한 표정 빈번")
+
+        val charDesc = if (characteristics.isNotEmpty()) {
+            " (${characteristics.joinToString(", ")})"
+        } else ""
 
         return when {
-            overall >= 80 -> "긴장도 매우 높음! ${highestFactor.first}이(가) 특히 두드러집니다."
-            overall >= 65 -> "긴장하고 있는 것 같습니다. ${highestFactor.first} 수치가 높습니다."
-            overall >= 55 -> "약간의 긴장이 감지됩니다."
-            overall >= 40 -> "비교적 안정적인 상태입니다."
-            overall >= 20 -> "매우 침착한 상태입니다."
-            else -> "완벽한 포커페이스입니다."
+            overall >= 80 -> {
+                "🚨 거짓말 가능성 매우 높음! ${highestFactor.first}(${highestFactor.second}점)과 " +
+                "${secondFactor?.first}(${secondFactor?.second}점)이 특히 두드러집니다.$charDesc"
+            }
+            overall >= 70 -> {
+                "⚠️ 상당히 긴장한 상태입니다. ${highestFactor.first}이(가) 높게 나타났습니다.$charDesc"
+            }
+            overall >= 55 -> {
+                "🤔 약간의 긴장이 감지됩니다. ${highestFactor.first} 수치가 평균 이상입니다.$charDesc"
+            }
+            overall >= 40 -> {
+                "😐 보통 수준의 긴장도입니다. ${highestFactor.first}이(가) 약간 높습니다."
+            }
+            overall >= 25 -> {
+                "😌 비교적 안정적인 상태입니다. 자연스러운 반응 범위입니다."
+            }
+            else -> {
+                "😎 매우 침착하고 안정적입니다. 완벽한 포커페이스!"
+            }
         }
     }
 
