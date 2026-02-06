@@ -472,7 +472,7 @@ class MarbleService(
     /**
      * 팀전 모드 주사위 굴리기
      */
-    private fun rollDiceTeamMode(roomId: String, state: MarbleGameState, room: Room, player: Player): DiceResult {
+    private fun rollDiceTeamMode(roomId: String, state: MarbleGameState, room: RoomInfo, player: Player): DiceResult {
         // 현재 턴인 팀의 플레이어인지 확인
         if (player.team != state.turnTeam) {
             throw IllegalArgumentException("지금은 ${state.turnTeam}팀 차례입니다")
@@ -535,7 +535,7 @@ class MarbleService(
     /**
      * 개인전 모드 주사위 굴리기
      */
-    private fun rollDiceSoloMode(roomId: String, state: MarbleGameState, room: Room, player: Player): DiceResult {
+    private fun rollDiceSoloMode(roomId: String, state: MarbleGameState, room: RoomInfo, player: Player): DiceResult {
         // 현재 턴인 플레이어인지 확인
         val currentTurnDeviceId = state.turnOrder.getOrNull(state.currentTurnIndex)
             ?: throw IllegalStateException("턴 순서가 올바르지 않습니다")
