@@ -340,6 +340,7 @@ class MarbleService(
         // 브로드캐스트
         sseService.broadcast(roomId, "MARBLE_MODE_SELECTED", mapOf(
             "mode" to mode.name,
+            "board" to state.board,
             "turnOrder" to (if (mode == GameMode.SOLO) state.turnOrder else emptyList()),
             "teams" to (if (mode == GameMode.TEAM) state.teams else emptyList())
         ))
