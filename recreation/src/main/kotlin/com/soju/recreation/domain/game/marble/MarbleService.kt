@@ -345,6 +345,29 @@ class MarbleService(
             "teams" to (if (mode == GameMode.TEAM) state.teams else emptyList())
         ))
 
+        // 첫 번째 턴 알림 (플레이어가 주사위 버튼을 볼 수 있도록)
+        when (mode) {
+            GameMode.TEAM -> {
+                // 팀전: 첫 번째 팀의 모든 플레이어에게 턴 알림
+                val firstTeam = state.teams.first()
+                val firstTeamDeviceIds = room.players.filter { it.team == firstTeam }.map { it.deviceId }
+                sseService.broadcast(roomId, "MARBLE_TURN_CHANGE", mapOf(
+                    "currentDeviceId" to firstTeamDeviceIds.firstOrNull(),
+                    "currentTeam" to firstTeam,
+                    "teamDeviceIds" to firstTeamDeviceIds
+                ))
+            }
+            GameMode.SOLO -> {
+                // 개인전: 첫 번째 플레이어에게 턴 알림
+                val firstDeviceId = state.turnOrder.firstOrNull() ?: ""
+                sseService.broadcast(roomId, "MARBLE_TURN_CHANGE", mapOf(
+                    "currentDeviceId" to firstDeviceId,
+                    "currentTeam" to null,
+                    "teamDeviceIds" to listOf(firstDeviceId)
+                ))
+            }
+        }
+
         return ModeSelectResult(
             mode = mode.name,
             turnOrder = if (mode == GameMode.SOLO) state.turnOrder else null,
@@ -362,6 +385,9 @@ class MarbleService(
      * 개인전: selectGameMode에서 이미 초기화됨
      */
     fun initializeGame(roomId: String): MarbleGameState {
+        val room = roomService.getRoomInfo(roomId)
+            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
+
         // 이미 게임 상태가 있으면 반환 (개인전 모드 선택 시 이미 초기화됨)
         val existingState = getState(roomId)
         if (existingState != null) {
@@ -371,13 +397,32 @@ class MarbleService(
                 "board" to existingState.board,
                 "turnOrder" to (if (existingState.mode == GameMode.SOLO) existingState.turnOrder else existingState.teams)
             ))
+
+            // 첫 번째 턴 알림 (플레이어가 주사위 버튼을 볼 수 있도록)
+            when (existingState.mode) {
+                GameMode.TEAM -> {
+                    val firstTeam = existingState.teams.first()
+                    val firstTeamDeviceIds = room.players.filter { it.team == firstTeam }.map { it.deviceId }
+                    sseService.broadcast(roomId, "MARBLE_TURN_CHANGE", mapOf(
+                        "currentDeviceId" to firstTeamDeviceIds.firstOrNull(),
+                        "currentTeam" to firstTeam,
+                        "teamDeviceIds" to firstTeamDeviceIds
+                    ))
+                }
+                GameMode.SOLO -> {
+                    val firstDeviceId = existingState.turnOrder.firstOrNull() ?: ""
+                    sseService.broadcast(roomId, "MARBLE_TURN_CHANGE", mapOf(
+                        "currentDeviceId" to firstDeviceId,
+                        "currentTeam" to null,
+                        "teamDeviceIds" to listOf(firstDeviceId)
+                    ))
+                }
+            }
+
             return existingState
         }
 
         // 팀전 모드로 초기화 (기존 로직)
-        val room = roomService.getRoomInfo(roomId)
-            ?: throw IllegalArgumentException("방을 찾을 수 없습니다: $roomId")
-
         // 팀 배정 확인
         val teams = room.players.mapNotNull { it.team }.distinct()
         if (teams.isEmpty()) {
@@ -412,6 +457,15 @@ class MarbleService(
             "board" to board,
             "teams" to room.players.groupBy { it.team },
             "turnOrder" to teams
+        ))
+
+        // 첫 번째 턴 알림 (플레이어가 주사위 버튼을 볼 수 있도록)
+        val firstTeam = teams.first()
+        val firstTeamDeviceIds = room.players.filter { it.team == firstTeam }.map { it.deviceId }
+        sseService.broadcast(roomId, "MARBLE_TURN_CHANGE", mapOf(
+            "currentDeviceId" to firstTeamDeviceIds.firstOrNull(),
+            "currentTeam" to firstTeam,
+            "teamDeviceIds" to firstTeamDeviceIds
         ))
 
         return state
