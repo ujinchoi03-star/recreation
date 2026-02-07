@@ -1,6 +1,7 @@
 package com.soju.recreation.domain.room
 
 import com.soju.recreation.domain.game.GameCode
+import com.soju.recreation.domain.game.marble.MarbleService
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -14,7 +15,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 @RequestMapping("/api/v1")
 class RoomController(
     private val roomService: RoomService,
-    private val sseService: SseService
+    private val sseService: SseService,
+    private val marbleService: MarbleService
 ) {
 
     // ============================================
@@ -130,9 +132,27 @@ class RoomController(
         val room = roomService.getRoomInfo(request.roomId)
             ?: throw IllegalArgumentException("Room not found: ${request.roomId}")
 
-        sseService.broadcastToAll(request.roomId, "MARBLE_PHASE_CHANGE", mapOf(
-            "phase" to request.phase
-        ))
+        // GAME 페이즈로 전환 시 현재 턴 정보 포함
+        val eventData = if (request.phase == "GAME") {
+            val gameState = marbleService.getGameState(request.roomId)
+            val currentTurnDeviceId = when {
+                gameState == null -> null
+                gameState.mode.name == "SOLO" -> gameState.turnOrder.getOrNull(gameState.currentTurnIndex)
+                gameState.mode.name == "TEAM" -> {
+                    val firstTeam = gameState.teams.firstOrNull()
+                    room.players.filter { it.team == firstTeam }.firstOrNull()?.deviceId
+                }
+                else -> null
+            }
+            mapOf(
+                "phase" to request.phase,
+                "currentTurnDeviceId" to currentTurnDeviceId
+            )
+        } else {
+            mapOf("phase" to request.phase)
+        }
+
+        sseService.broadcastToAll(request.roomId, "MARBLE_PHASE_CHANGE", eventData)
         return ApiResponse.success(Unit)
     }
 
