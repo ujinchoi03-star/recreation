@@ -155,7 +155,7 @@ class SpeedQuizController(
 
 data class QuizInitRequest(
     val roomId: String,
-    val roundTimeSeconds: Int = 60  // 기본 60초
+    val roundTimeSeconds: Int = 120  // 기본 120초 (2분)
 )
 
 data class RoundStartRequest(

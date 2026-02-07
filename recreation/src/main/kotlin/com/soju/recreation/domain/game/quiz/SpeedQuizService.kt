@@ -23,7 +23,7 @@ class SpeedQuizService(
         private const val STATE_KEY = "room:%s:quiz:state"
         private const val TTL_HOURS = 6L
         private const val DEFAULT_WORD_COUNT = 50
-        private const val DEFAULT_ROUND_TIME = 60
+        private const val DEFAULT_ROUND_TIME = 120
     }
 
     // Timer Management
@@ -457,7 +457,7 @@ class SpeedQuizService(
 data class SpeedQuizState(
     val teams: MutableList<String>,                          // Participating teams
     var currentTeamIndex: Int = 0,                           // Current team index
-    var roundTimeSeconds: Int = 60,                          // Round time limit
+    var roundTimeSeconds: Int = 120,                         // Round time limit (2 minutes)
     var remainingTime: Int = 0,                              // Remaining time
     val teamScores: MutableMap<String, Int> = mutableMapOf(),// Team scores
     val completedTeams: MutableList<String> = mutableListOf(),// Completed teams

@@ -569,13 +569,11 @@ class TruthService(
 
         val overallScore = (baseScore + multiFactorBonus).coerceIn(0, 100)
 
-        // ===== 7. 거짓말 판정 (현실적인 임계값: 55) =====
-        val isLie = overallScore >= 55
+        // ===== 7. 거짓말 판정 (민감도 증가: 7점 이상 거짓말 감지) =====
+        // Increased sensitivity: 7+ score triggers lie detection (was 55)
+        val isLie = overallScore >= 7
 
-        val comment = buildAnalysisComment(
-            overallScore, blinkScore, eyeScore, tremorScore, nostrilScore,
-            volatilityScore, trendScore, nervousRatio
-        )
+        val comment = buildAnalysisComment(overallScore, blinkScore, eyeScore, tremorScore, nostrilScore)
 
         return LieDetectionResult(
             isLie = isLie,
@@ -592,58 +590,29 @@ class TruthService(
     }
 
     /**
-     * 분석 결과에 따른 코멘트 생성 (개선된 버전)
+     * 분석 결과에 따른 코멘트 생성
      */
     private fun buildAnalysisComment(
         overall: Int,
         blink: Int,
         eye: Int,
         tremor: Int,
-        nostril: Int,
-        volatility: Int,
-        trend: Int,
-        nervousRatio: Double
+        nostril: Int
     ): String {
-        val factors = listOf(
+        val highestFactor = listOf(
             "눈 깜빡임" to blink,
             "시선 불안정" to eye,
             "얼굴 떨림" to tremor,
             "콧구멍 움직임" to nostril
-        ).sortedByDescending { it.second }
-
-        val highestFactor = factors.first()
-        val secondFactor = factors.getOrNull(1)
-
-        // 주요 특징 설명
-        val characteristics = mutableListOf<String>()
-        if (volatility > 30) characteristics.add("불안정한 움직임")
-        if (trend > 10) characteristics.add("점점 긴장이 증가")
-        if (nervousRatio > 0.3) characteristics.add("긴장한 표정 빈번")
-
-        val charDesc = if (characteristics.isNotEmpty()) {
-            " (${characteristics.joinToString(", ")})"
-        } else ""
+        ).maxByOrNull { it.second }!!
 
         return when {
-            overall >= 80 -> {
-                "🚨 거짓말 가능성 매우 높음! ${highestFactor.first}(${highestFactor.second}점)과 " +
-                "${secondFactor?.first}(${secondFactor?.second}점)이 특히 두드러집니다.$charDesc"
-            }
-            overall >= 70 -> {
-                "⚠️ 상당히 긴장한 상태입니다. ${highestFactor.first}이(가) 높게 나타났습니다.$charDesc"
-            }
-            overall >= 55 -> {
-                "🤔 약간의 긴장이 감지됩니다. ${highestFactor.first} 수치가 평균 이상입니다.$charDesc"
-            }
-            overall >= 40 -> {
-                "😐 보통 수준의 긴장도입니다. ${highestFactor.first}이(가) 약간 높습니다."
-            }
-            overall >= 25 -> {
-                "😌 비교적 안정적인 상태입니다. 자연스러운 반응 범위입니다."
-            }
-            else -> {
-                "😎 매우 침착하고 안정적입니다. 완벽한 포커페이스!"
-            }
+            overall >= 15 -> "긴장도 매우 높음! ${highestFactor.first}이(가) 특히 두드러집니다."
+            overall >= 10 -> "긴장하고 있는 것 같습니다. ${highestFactor.first} 수치가 높습니다."
+            overall >= 7 -> "약간의 긴장이 감지됩니다."
+            overall >= 5 -> "비교적 안정적인 상태입니다."
+            overall >= 3 -> "매우 침착한 상태입니다."
+            else -> "완벽한 포커페이스입니다."
         }
     }
 
